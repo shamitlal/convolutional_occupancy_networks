@@ -2,6 +2,8 @@ import torch
 import torch.optim as optim
 from tensorboardX import SummaryWriter
 import numpy as np
+import ipdb
+st = ipdb.set_trace
 import os
 import argparse
 import time, datetime
@@ -55,9 +57,13 @@ shutil.copyfile(args.config, os.path.join(out_dir, 'config.yaml'))
 # Dataset
 train_dataset = config.get_dataset('train', cfg)
 val_dataset = config.get_dataset('val', cfg, return_idx=True)
-
+# st()
 train_loader = torch.utils.data.DataLoader(
+<<<<<<< HEAD
     train_dataset, batch_size=batch_size, num_workers=0*cfg['training']['n_workers'], shuffle=True,
+=======
+    train_dataset, batch_size=1, num_workers=cfg['training']['n_workers'], shuffle=True,
+>>>>>>> 9f82046e3b886ee141705d7f35f3fa1f1f3f1743
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
 
@@ -76,9 +82,8 @@ data_vis_list = []
 
 # Build a data dictionary for visualization
 iterator = iter(vis_loader)
-for i in range(len(vis_loader)):
-    if i>=10:
-        break
+for i in range(10):
+    print(i)
     data_vis = next(iterator)
     idx = data_vis['idx'].item()
     model_dict = val_dataset.get_model_dict(idx)
@@ -138,6 +143,7 @@ while True:
 
     for batch in train_loader:
         it += 1
+        # st()
         loss = trainer.train_step(batch)
         logger.add_scalar('train/loss', loss, it)
 

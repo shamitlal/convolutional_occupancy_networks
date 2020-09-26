@@ -60,7 +60,6 @@ def update_recursive(dict1, dict2):
 # Models
 def get_model(cfg, device=None, dataset=None):
     ''' Returns the model instance.
-
     Args:
         cfg (dict): config dictionary
         device (device): pytorch device

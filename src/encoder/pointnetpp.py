@@ -2,6 +2,8 @@
 From the implementation of https://github.com/yanx27/Pointnet_Pointnet2_pytorch
 '''
 from time import time
+import ipdb
+st = ipdb.set_trace
 import numpy as np
 import torch
 import torch.nn as nn
@@ -49,6 +51,67 @@ class PointNetSetAbstraction(nn.Module):
         new_points = torch.max(new_points, 2)[0]
         new_xyz = new_xyz.permute(0, 2, 1)
         return new_xyz, new_points
+
+
+class PointNetSetAbstractionMsg(nn.Module):
+    def __init__(self, npoint, radius_list, nsample_list, in_channel, mlp_list):
+        super(PointNetSetAbstractionMsg, self).__init__()
+        self.npoint = npoint
+        self.radius_list = radius_list
+        self.nsample_list = nsample_list
+        self.conv_blocks = nn.ModuleList()
+        self.bn_blocks = nn.ModuleList()
+        for i in range(len(mlp_list)):
+            convs = nn.ModuleList()
+            bns = nn.ModuleList()
+            last_channel = in_channel + 3
+            for out_channel in mlp_list[i]:
+                convs.append(nn.Conv2d(last_channel, out_channel, 1))
+                bns.append(nn.BatchNorm2d(out_channel))
+                last_channel = out_channel
+            self.conv_blocks.append(convs)
+            self.bn_blocks.append(bns)
+
+    def forward(self, xyz, points):
+        """
+        Input:
+            xyz: input points position data, [B, C, N]
+            points: input points data, [B, D, N]
+        Return:
+            new_xyz: sampled points position data, [B, C, S]
+            new_points_concat: sample points feature data, [B, D', S]
+        """
+        xyz = xyz.permute(0, 2, 1)
+        if points is not None:
+            points = points.permute(0, 2, 1)
+
+        B, N, C = xyz.shape
+        S = self.npoint
+        new_xyz = index_points(xyz, farthest_point_sample(xyz, S))
+        new_points_list = []
+        for i, radius in enumerate(self.radius_list):
+            K = self.nsample_list[i]
+            group_idx = query_ball_point(radius, K, xyz, new_xyz)
+            grouped_xyz = index_points(xyz, group_idx)
+            grouped_xyz -= new_xyz.view(B, S, 1, C)
+            if points is not None:
+                grouped_points = index_points(points, group_idx)
+                grouped_points = torch.cat([grouped_points, grouped_xyz], dim=-1)
+            else:
+                grouped_points = grouped_xyz
+
+            grouped_points = grouped_points.permute(0, 3, 2, 1)  # [B, D, K, S]
+            for j in range(len(self.conv_blocks[i])):
+                conv = self.conv_blocks[i][j]
+                bn = self.bn_blocks[i][j]
+                grouped_points =  F.relu(bn(conv(grouped_points)))
+            new_points = torch.max(grouped_points, 2)[0]  # [B, D', S]
+            new_points_list.append(new_points)
+
+        new_xyz = new_xyz.permute(0, 2, 1)
+        new_points_concat = torch.cat(new_points_list, dim=1)
+        return new_xyz, new_points_concat
+
 
 class PointNetFeaturePropagation(nn.Module):
     def __init__(self, in_channel, mlp):
@@ -102,32 +165,76 @@ class PointNetFeaturePropagation(nn.Module):
             new_points = F.relu(bn(conv(new_points)))
         return new_points
 
-class PointNetPlusPlus(nn.Module):
-    def __init__(self, dim=None, c_dim=128, padding=0.1):
-        super(PointNetPlusPlus, self).__init__()
-
-        self.sa1 = PointNetSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=6, mlp=[64, 64, 128], group_all=False)
+class PointNetPlusPlusSSG(nn.Module):
+    def __init__(self, num_class=16,normal_channel=False):
+        super(PointNetPlusPlusSSG, self).__init__()
+        in_channel = 6 if normal_channel else 3
+        self.normal_channel = normal_channel
+        self.sa1 = PointNetSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=3, mlp=[64, 64, 128], group_all=False)
         self.sa2 = PointNetSetAbstraction(npoint=128, radius=0.4, nsample=64, in_channel=128 + 3, mlp=[128, 128, 256], group_all=False)
         self.sa3 = PointNetSetAbstraction(npoint=None, radius=None, nsample=None, in_channel=256 + 3, mlp=[256, 512, 1024], group_all=True)
-        self.fp3 = PointNetFeaturePropagation(in_channel=1280, mlp=[256, 256])
-        self.fp2 = PointNetFeaturePropagation(in_channel=384, mlp=[256, 128])
-        self.fp1 = PointNetFeaturePropagation(in_channel=128, mlp=[128, 128, c_dim])
+        self.fc1 = nn.Linear(1024, 512)
+        self.bn1 = nn.BatchNorm1d(512)
+        self.drop1 = nn.Dropout(0.4)
+        self.fc2 = nn.Linear(512, 256)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.drop2 = nn.Dropout(0.4)
+        self.fc3 = nn.Linear(256, num_class)
 
     def forward(self, xyz):
-        xyz = xyz.permute(0, 2, 1)
-        l0_points = xyz
-        l0_xyz = xyz[:,:3,:]
-
-        l1_xyz, l1_points = self.sa1(l0_xyz, l0_points)
+        B, _, _ = xyz.shape
+        xyz = xyz.permute(0,2,1)
+        if self.normal_channel:
+            norm = xyz[:, 3:, :]
+            xyz = xyz[:, :3, :]
+        else:
+            norm = None
+        l1_xyz, l1_points = self.sa1(xyz, None)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
         l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
+        x = l3_points.view(B, 1024)
+        x = self.drop1(F.relu(self.bn1(self.fc1(x))))
+        x = self.drop2(F.relu(self.bn2(self.fc2(x))))
+        x = self.fc3(x)
+        #x = F.log_softmax(x, -1)
+        return x #, l3_points
 
-        l2_points = self.fp3(l2_xyz, l3_xyz, l2_points, l3_points)
-        l1_points = self.fp2(l1_xyz, l2_xyz, l1_points, l2_points)
-        l0_points = self.fp1(l0_xyz, l1_xyz, None, l1_points)
 
-        return xyz.permute(0, 2, 1), l0_points.permute(0, 2, 1)
+class PointNetPlusPlusMSG(nn.Module):
+    def __init__(self, num_class=16,normal_channel=False):
+        super(PointNetPlusPlusMSG, self).__init__()
+        in_channel = 3 if normal_channel else 0
+        print(in_channel)
+        self.normal_channel = normal_channel
+        self.sa1 = PointNetSetAbstractionMsg(512, [0.1, 0.2, 0.4], [16, 32, 128], in_channel,[[32, 32, 64], [64, 64, 128], [64, 96, 128]])
+        self.sa2 = PointNetSetAbstractionMsg(128, [0.2, 0.4, 0.8], [32, 64, 128], 320,[[64, 64, 128], [128, 128, 256], [128, 128, 256]])
+        self.sa3 = PointNetSetAbstraction(None, None, None, 640 + 3, [256, 512, 1024], True)
+        self.fc1 = nn.Linear(1024, 512)
+        self.bn1 = nn.BatchNorm1d(512)
+        self.drop1 = nn.Dropout(0.4)
+        self.fc2 = nn.Linear(512, 256)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.drop2 = nn.Dropout(0.5)
+        self.fc3 = nn.Linear(256, num_class)
 
+    def forward(self, xyz):
+        B, _, _ = xyz.shape
+        xyz = xyz.permute(0,2,1)
+        if self.normal_channel:
+            norm = xyz[:, 3:, :]
+            xyz = xyz[:, :3, :]
+        else:
+            norm = None
+        l1_xyz, l1_points = self.sa1(xyz, norm)
+        l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
+        l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
+        x = l3_points.view(B, 1024)
+        x = self.drop1(F.relu(self.bn1(self.fc1(x))))
+        x = self.drop2(F.relu(self.bn2(self.fc2(x))))
+        x = self.fc3(x)
+        #x = F.log_softmax(x, -1)
+        return x #, l3_points
+    
 
 def timeit(tag, t):
     print("{}: {}s".format(tag, time() - t))
@@ -289,6 +396,8 @@ def sample_and_group_all(xyz, points):
 
 if __name__ == '__main__':
     import  torch
-    model = get_model(13)
-    xyz = torch.rand(6, 3, 2048)
-    (model(xyz))
+#     model = PointNetPlusPlusSSG()
+    model = PointNetPlusPlusMSG()
+    xyz = torch.rand(6, 2048, 3)
+    emb = (model(xyz))
+    print(emb.size())

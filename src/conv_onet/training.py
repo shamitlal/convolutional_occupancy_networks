@@ -114,7 +114,6 @@ class Trainer(BaseTrainer):
 
     def compute_loss(self, data):
         ''' Computes the loss.
-
         Args:
             data (dict): data dictionary
         '''
