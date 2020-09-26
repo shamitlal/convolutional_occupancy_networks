@@ -10,7 +10,8 @@ from src import config, data
 from src.checkpoints import CheckpointIO
 from collections import defaultdict
 import shutil
-
+import ipdb 
+st = ipdb.set_trace
 
 # Arguments
 parser = argparse.ArgumentParser(
@@ -56,12 +57,12 @@ train_dataset = config.get_dataset('train', cfg)
 val_dataset = config.get_dataset('val', cfg, return_idx=True)
 
 train_loader = torch.utils.data.DataLoader(
-    train_dataset, batch_size=batch_size, num_workers=cfg['training']['n_workers'], shuffle=True,
+    train_dataset, batch_size=batch_size, num_workers=0*cfg['training']['n_workers'], shuffle=True,
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
 
 val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=1, num_workers=cfg['training']['n_workers_val'], shuffle=False,
+        val_dataset, batch_size=1, num_workers=0*cfg['training']['n_workers_val'], shuffle=False,
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
 
@@ -76,6 +77,8 @@ data_vis_list = []
 # Build a data dictionary for visualization
 iterator = iter(vis_loader)
 for i in range(len(vis_loader)):
+    if i>=10:
+        break
     data_vis = next(iterator)
     idx = data_vis['idx'].item()
     model_dict = val_dataset.get_model_dict(idx)
@@ -90,7 +93,7 @@ for i in range(len(vis_loader)):
         data_vis_list.append({'category': category_name, 'it': c_it, 'data': data_vis})
 
     model_counter[category_id] += 1
-
+# st()
 # Model
 model = config.get_model(cfg, device=device, dataset=train_dataset)
 

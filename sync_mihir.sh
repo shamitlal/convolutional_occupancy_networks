@@ -1,0 +1,1 @@
+rsync -av ./ cmu1:/home/mprabhud/shamit/convolutional_occupancy_networks

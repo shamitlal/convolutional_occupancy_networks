@@ -176,7 +176,8 @@ def get_data_fields(mode, cfg):
             fields['points'] = data.PointsField(
                 cfg['data']['points_file'], points_transform,
                 unpackbits=cfg['data']['points_unpackbits'],
-                multi_files=cfg['data']['multi_files']
+                multi_files=cfg['data']['multi_files'],
+                cfg=cfg
             )
         else:
             fields['points'] = data.PatchPointsField(
@@ -201,7 +202,8 @@ def get_data_fields(mode, cfg):
                 fields['points_iou'] = data.PointsField(
                     points_iou_file,
                     unpackbits=cfg['data']['points_unpackbits'],
-                    multi_files=cfg['data']['multi_files']
+                    multi_files=cfg['data']['multi_files'],
+                    cfg=cfg
                 )
         if voxels_file is not None:
             fields['voxels'] = data.VoxelsField(voxels_file)

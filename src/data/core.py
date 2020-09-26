@@ -4,7 +4,8 @@ from torch.utils import data
 import numpy as np
 import yaml
 from src.common import decide_total_volume_range, update_reso
-
+import ipdb 
+st = ipdb.set_trace
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,8 @@ class Shapes3dDataset(data.Dataset):
         Args:
             idx (int): ID of data point
         '''
+        camera_view = np.random.randint(self.cfg['data']['n_views']) # camera view to which to warp
+        
         category = self.models[idx]['category']
         model = self.models[idx]['model']
         c_idx = self.metadata[category]['idx']
@@ -151,7 +154,7 @@ class Shapes3dDataset(data.Dataset):
         
         for field_name, field in self.fields.items():
             try:
-                field_data = field.load(model_path, idx, info)
+                field_data = field.load(model_path, idx, info, camera_view)
             except Exception:
                 if self.no_except:
                     logger.warn(
