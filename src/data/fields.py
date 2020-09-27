@@ -11,6 +11,7 @@ from torch_scatter import scatter
 import ipdb
 st = ipdb.set_trace
 import torch
+import imageio
 class IndexField(Field):
     ''' Basic index field.'''
     def load(self, model_path, idx, category, camera_view):
@@ -333,6 +334,11 @@ class PointCloudField(Field):
             points = points.numpy()[0]
             if self.cfg['data']['single_view_pcd']:
                 points=xyz_camX.numpy()
+                rgb = imageio.imread(os.path.join(model_path, 'img_choy2016', str(camera_view).zfill(3)+".jpg"))
+                rgb = torch.tensor(rgb)
+                if rgb.ndim == 2:
+                    rgb = rgb.unsqueeze(-1).repeat(1,1,3)
+                rgb = rgb.permute(2,0,1)/255. - 0.5
 
         data = {
             None: points,
@@ -341,6 +347,9 @@ class PointCloudField(Field):
 
         if self.transform is not None:
             data = self.transform(data)
+        
+        if self.cfg['data']['single_view_pcd']:
+            data['single_view_rgb'] = rgb.numpy()
 
         return data
 

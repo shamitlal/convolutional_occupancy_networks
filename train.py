@@ -139,7 +139,6 @@ while True:
 
     for batch in train_loader:
         it += 1
-        # st()
         loss = trainer.train_step(batch)
         logger.add_scalar('train/loss', loss, it)
 
