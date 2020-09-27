@@ -59,16 +59,12 @@ train_dataset = config.get_dataset('train', cfg)
 val_dataset = config.get_dataset('val', cfg, return_idx=True)
 # st()
 train_loader = torch.utils.data.DataLoader(
-<<<<<<< HEAD
-    train_dataset, batch_size=batch_size, num_workers=0*cfg['training']['n_workers'], shuffle=True,
-=======
     train_dataset, batch_size=1, num_workers=cfg['training']['n_workers'], shuffle=True,
->>>>>>> 9f82046e3b886ee141705d7f35f3fa1f1f3f1743
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
 
 val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=1, num_workers=0*cfg['training']['n_workers_val'], shuffle=False,
+        val_dataset, batch_size=1, num_workers=cfg['training']['n_workers_val'], shuffle=False,
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
 
