@@ -38,7 +38,7 @@ class Trainer(BaseTrainer):
         if vis_dir is not None and not os.path.exists(vis_dir):
             os.makedirs(vis_dir)
 
-    def train_step(self, data):
+    def train_step(self, data, vq_loss_coeff=0.0,arg_dict=None):
         ''' Performs a training step.
 
         Args:
@@ -46,7 +46,7 @@ class Trainer(BaseTrainer):
         '''
         self.model.train()
         self.optimizer.zero_grad()
-        loss = self.compute_loss(data)
+        loss = self.compute_loss(data,vq_loss_coeff=vq_loss_coeff,arg_dict=arg_dict)
         loss.backward()
         self.optimizer.step()
 
@@ -114,15 +114,19 @@ class Trainer(BaseTrainer):
 
         return eval_dict
 
-    def compute_loss(self, data):
+    def compute_loss(self, data,vq_loss_coeff=0.0,arg_dict=None):
         ''' Computes the loss.
         Args:
             data (dict): data dictionary
         '''
         device = self.device
+        do_vqvae = False
+
         p = data.get('points').to(device)
         occ = data.get('points.occ').to(device)
         inputs = data.get('inputs', torch.empty(p.size(0), 0)).to(device)
+
+        logger = arg_dict['logger']
         
         if 'pointcloud_crop' in data.keys():
             # add pre-computed index
@@ -131,9 +135,12 @@ class Trainer(BaseTrainer):
             # add pre-computed normalized coordinates
             p = add_key(p, data.get('points.normalized'), 'p', 'p_n', device=device)
 
-        c_new = self.model.encode_inputs(inputs)
-        
+        # st()
+        # logger.add_graph(self.model, inputs, True)
+        c_new = self.model.encode_inputs(inputs,arg_dict=arg_dict)
+
         if isinstance(c_new, list): 
+            do_vqvae = True
             c,vqvae_loss = c_new
         else:
             c = c_new
@@ -147,7 +154,7 @@ class Trainer(BaseTrainer):
         loss_i = F.binary_cross_entropy_with_logits(
             logits, occ, reduction='none')
         loss = loss_i.sum(-1).mean()
-        # loss = loss + vqvae_loss*10
         # st()
-
+        if do_vqvae:
+            loss = loss + vqvae_loss*vq_loss_coeff
         return loss

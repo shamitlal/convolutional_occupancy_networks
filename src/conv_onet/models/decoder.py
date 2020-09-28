@@ -193,7 +193,7 @@ class LocalDecoder_Hyper(nn.Module):
             net = F.linear(p[index_batch:index_batch+1], fc_p_kls[0][index_batch], bias=fc_p_bias[0][index_batch])
             for i in range(self.n_blocks):
                 if self.c_dim != 0:
-                    net = net + F.linear(c[index_batch], fc_c_kls[i][index_batch], bias=fc_c_bias[i][index_batch])
+                    net = net + F.linear(c[index_batch:index_batch+1], fc_c_kls[i][index_batch], bias=fc_c_bias[i][index_batch])
                 net = self.blocks[i]([blocks_kls[2*i:2*(i+1)],blocks_bias[2*i:2*(i+1)]],net,index_batch)
             out = F.linear(self.actvn(net),fc_out_kls[0][index_batch],bias=fc_out_bias[0][index_batch])
             out_list.append(out)

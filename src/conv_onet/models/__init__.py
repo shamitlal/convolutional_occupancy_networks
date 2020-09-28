@@ -57,7 +57,7 @@ class ConvolutionalOccupancyNetwork(nn.Module):
         p_r = self.decode(p, c, **kwargs)
         return p_r
 
-    def encode_inputs(self, inputs):
+    def encode_inputs(self, inputs,arg_dict=None):
         ''' Encodes the input.
 
         Args:
@@ -154,7 +154,7 @@ class HyperNet(nn.Module):
             self.encodingnet = PointNetPlusPlusMSG()
 
         self.embedding = nn.Embedding(vqvae_dict_size, self.emb_dimension)
-        nn.init.normal_(self.embedding.weight, mean=0, std=0.6)
+        nn.init.normal_(self.embedding.weight, mean=0, std=0.4)
         self.prototype_usage = torch.zeros(vqvae_dict_size).cuda()
         # st()
 
@@ -178,12 +178,17 @@ class HyperNet(nn.Module):
 
         self.commitment_cost = 0.25
 
-        encoder_weight_variances = [5.5e-2]*28
-        encoder_bias_variances = [5.5e-2]*23
+        encoder_weight_variances = [0.4, 0.055, 0.055, 0.08, 0.08, 0.055, 0.08, 0.055, 0.055, 0.08, 0.055, 0.055, 0.055, 0.055, 0.055, 0.055, 0.15, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.15]
+        encoder_weight_names = ['fc_pos.weight', 'blocks.0.fc_0.weight', 'blocks.0.fc_1.weight', 'blocks.0.shortcut.weight', 'blocks.1.fc_0.weight', 'blocks.1.fc_1.weight', 'blocks.1.shortcut.weight', 'blocks.2.fc_0.weight', 'blocks.2.fc_1.weight', 'blocks.2.shortcut.weight', 'blocks.3.fc_0.weight', 'blocks.3.fc_1.weight', 'blocks.3.shortcut.weight', 'blocks.4.fc_0.weight', 'blocks.4.fc_1.weight', 'blocks.4.shortcut.weight', 'fc_c.weight', 'unet3d.encoders.0.basic_module.SingleConv1.conv.weight', 'unet3d.encoders.0.basic_module.SingleConv2.conv.weight', 'unet3d.encoders.1.basic_module.SingleConv1.conv.weight', 'unet3d.encoders.1.basic_module.SingleConv2.conv.weight', 'unet3d.encoders.2.basic_module.SingleConv1.conv.weight', 'unet3d.encoders.2.basic_module.SingleConv2.conv.weight', 'unet3d.decoders.0.basic_module.SingleConv1.conv.weight', 'unet3d.decoders.0.basic_module.SingleConv2.conv.weight', 'unet3d.decoders.1.basic_module.SingleConv1.conv.weight', 'unet3d.decoders.1.basic_module.SingleConv2.conv.weight', 'unet3d.final_conv.weight']
 
-        decoder_weight_variances = [5e-2]*17
-        decoder_bias_variances = [5e-2]*17
+        encoder_bias_variances = [0.5, 0.2, 0.2, 0.12, 0.13, 0.15, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.055, 0.055, 0.055, 0.055, 0.055, 0.055, 0.055, 0.055, 0.055, 0.055, 0.1]
+        encoder_bias_names = ['fc_pos.bias', 'blocks.0.fc_0.bias', 'blocks.0.fc_1.bias', 'blocks.1.fc_0.bias', 'blocks.1.fc_1.bias', 'blocks.2.fc_0.bias', 'blocks.2.fc_1.bias', 'blocks.3.fc_0.bias', 'blocks.3.fc_1.bias', 'blocks.4.fc_0.bias', 'blocks.4.fc_1.bias', 'fc_c.bias', 'unet3d.encoders.0.basic_module.SingleConv1.conv.bias', 'unet3d.encoders.0.basic_module.SingleConv2.conv.bias', 'unet3d.encoders.1.basic_module.SingleConv1.conv.bias', 'unet3d.encoders.1.basic_module.SingleConv2.conv.bias', 'unet3d.encoders.2.basic_module.SingleConv1.conv.bias', 'unet3d.encoders.2.basic_module.SingleConv2.conv.bias', 'unet3d.decoders.0.basic_module.SingleConv1.conv.bias', 'unet3d.decoders.0.basic_module.SingleConv2.conv.bias', 'unet3d.decoders.1.basic_module.SingleConv1.conv.bias', 'unet3d.decoders.1.basic_module.SingleConv2.conv.bias', 'unet3d.final_conv.bi1']
 
+        decoder_weight_variances = [0.3, 0.13, 0.13, 0.13, 0.13, 0.12, 0.13, 0.13, 0.13, 0.13, 0.13, 0.13, 0.13, 0.13, 0.13, 0.13, 0.2]
+        decoder_weight_names = ['fc_p.weight', 'fc_c.0.weight', 'fc_c.1.weight', 'fc_c.2.weight', 'fc_c.3.weight', 'fc_c.4.weight', 'blocks.0.fc_0.weight', 'blocks.0.fc_1.weight', 'blocks.1.fc_0.weight', 'blocks.1.fc_1.weight', 'blocks.2.fc_0.weight', 'blocks.2.fc_1.weight', 'blocks.3.fc_0.weight', 'blocks.3.fc_1.weight', 'blocks.4.fc_0.weight', 'blocks.4.fc_1.weight', 'fc_out.weight']
+
+        decoder_bias_variances = [0.5,  0.1, 0.25, 0.07, 0.25, 0.4, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.05]
+        decoder_bias_names = ['fc_p.bias', 'fc_c.0.bias', 'fc_c.1.bias', 'fc_c.2.bias', 'fc_c.3.bias', 'fc_c.4.bias', 'blocks.0.fc_0.bias', 'blocks.0.fc_1.bias', 'blocks.1.fc_0.bias', 'blocks.1.fc_1.bias', 'blocks.2.fc_0.bias', 'blocks.2.fc_1.bias', 'blocks.3.fc_0.bias', 'blocks.3.fc_1.bias', 'blocks.4.fc_0.bias', 'blocks.4.fc_1.bias', 'fc_out.bias']
 
         self.encoder_kernelWeights = nn.ParameterList([Parameter(torch.nn.init.normal_(torch.empty(self.emb_dimension, self.total(i)), mean=0, std=encoder_weight_variances[index]), requires_grad=True) for index,i in enumerate(self.encoder_kernel_shape)])
         self.encoder_biasWeights =  nn.ParameterList([Parameter(torch.nn.init.normal_(torch.empty(self.emb_dimension, self.total(i)), mean=0, std=encoder_bias_variances[index]), requires_grad=True) for index,i in enumerate(self.encoder_bias_shape)])
@@ -207,7 +212,7 @@ class HyperNet(nn.Module):
         total = torch.sum(self.prototype_usage)
         probs = self.prototype_usage/total
         # Select 2 good embeds and take mean
-        good_embeds_idxs = torch.where(probs>hyp.dynamic_hypernet_probability_thresh)[0]
+        good_embeds_idxs = torch.where(probs>0.2)[0]
         if good_embeds_idxs.shape[0] < 2:
             print("Not enough highly used embedding. Skipping dynamic update.")
             return 
@@ -232,25 +237,42 @@ class HyperNet(nn.Module):
 
         self.prototype_usage *= 0 # clear usage
 
-    def forward(self, input):
+    def forward(self, input, arg_dict=None):
         loss = 0
+        if arg_dict is not None:
+            logger = arg_dict['logger']
+            iteration = arg_dict['iteration']
+            dynamic_dict = arg_dict['dynamic_dict']
+        
+
+        if arg_dict is not None:        
+            if dynamic_dict:
+                if (iteration%1000) ==0:
+                    with torch.no_grad():
+                        self.update_embedding_dynamically()
+
+        step_check = 250
         # st()
         B = input.shape[0]
         embed = self.encodingnet(input)
         embed_shape = embed.shape            
-        if False:
-            summ_writer.summ_histogram("embedding_generated", embed.clone().cpu().data.numpy())    
-            summ_writer.summ_histogram("embedding_init", self.embedding.weight.clone().cpu().data.numpy())
+        
+        if arg_dict is not None:        
+            if (iteration%step_check) ==0:
+                logger.add_histogram("embedding_generated", embed.clone().cpu().data.numpy(),iteration)    
+                logger.add_histogram("embedding_init", self.embedding.weight.clone().cpu().data.numpy(),iteration)
 
         distances = (torch.sum(embed**2, dim=1, keepdim=True) 
                     + torch.sum(self.embedding.weight**2, dim=1)
                     - 2 * torch.matmul(embed, self.embedding.weight.t()))
         encoding_indices = torch.argmin(distances, dim=1).unsqueeze(1)
+
         for idx in encoding_indices.view(-1):
             self.prototype_usage[idx] += 1
 
-        if False:
-            summ_writer.summ_histogram("embedding_indices_matched", encoding_indices.clone().cpu().data.numpy())    
+        if arg_dict is not None:        
+            if (iteration%step_check) ==0:
+                logger.add_histogram("embedding_indices_matched", encoding_indices.clone().cpu().data.numpy(),iteration)    
 
         encodings = torch.zeros(encoding_indices.shape[0], self.vqvae_dict_size, device=embed.device) 
         encodings.scatter_(1, encoding_indices, 1)    
@@ -269,9 +291,10 @@ class HyperNet(nn.Module):
         embed = F.leaky_relu(embed)
         embed = self.hidden2(embed)
         embed = F.leaky_relu(embed)
-
-        if False:
-            summ_writer.summ_histogram("embedding", embed.clone().cpu().data.numpy())    
+    
+        if arg_dict is not None:        
+            if (iteration%step_check) ==0:
+                logger.add_histogram("embedding", embed.clone().cpu().data.numpy(),iteration)
 
         # st()
         encoder_kernels = [(torch.matmul(embed,self.encoder_kernelWeights[i])).view([B]+list(self.encoder_kernel_shape[i])) for i in range(len(self.encoder_kernelWeights))]
@@ -279,15 +302,20 @@ class HyperNet(nn.Module):
 
         decoder_kernels = [(torch.matmul(embed,self.decoder_kernelWeights[i])).view([B]+list(self.decoder_kernel_shape[i])) for i in range(len(self.decoder_kernelWeights))]
         decoder_bias = [(torch.matmul(embed,self.decoder_biasWeights[i])).view([B]+list(self.decoder_bias_shape[i])) for i in range(len(self.decoder_biasWeights))]
-        if False:
-            if hyp.vis_feat_weights:
-                names = pickle.load(open('names.p',"rb"))
-                for i in range(12):
-                    weight_name = self.weight_names[i]+".weight"
-                    bias_name = self.weight_names[i]+".bias"
-                    summ_writer.summ_histogram(weight_name, feat_kernels[i].clone().cpu().data.numpy())
-                    summ_writer.summ_histogram(bias_name, feat_Bias[i].clone().cpu().data.numpy())
 
+        if False:
+            for ind,weight_name in enumerate(self.encoder_kernel_names):
+                logger.add_histogram("encoder_weight_"+weight_name, encoder_kernels[ind].clone().cpu().data.numpy(),iteration)
+
+            for ind,weight_name in enumerate(self.encoder_bias_names):
+                logger.add_histogram("encoder_bias_"+weight_name, encoder_bias[ind].clone().cpu().data.numpy(),iteration)
+
+            for ind,weight_name in enumerate(self.decoder_kernel_names):
+                logger.add_histogram("decoder_weight_"+weight_name, decoder_kernels[ind].clone().cpu().data.numpy(),iteration)
+
+            for ind,weight_name in enumerate(self.decoder_bias_names):
+                logger.add_histogram("decoder_bias_"+weight_name, decoder_bias[ind].clone().cpu().data.numpy(),iteration)
+        # st()
         return [encoder_kernels,encoder_bias,decoder_kernels,decoder_bias], loss
 
 
@@ -338,18 +366,25 @@ class ConvolutionalOccupancyNetwork_Hypernet(nn.Module):
             batch_size = p['p'].size(0)
         else:
             batch_size = p.size(0)
-        st()
-        c = self.encode_inputs(inputs)
+        
+        c_new = self.encode_inputs(inputs)
+
+        if isinstance(c_new, list): 
+            do_vqvae = True
+            c,vqvae_loss = c_new
+        else:
+            c = c_new
+
         p_r = self.decode(p, c, **kwargs)
         return p_r
 
-    def encode_inputs(self, inputs):
+    def encode_inputs(self, inputs,arg_dict=None):
         ''' Encodes the input.
 
         Args:
             input (tensor): the input
         '''
-        hyper_wts,loss = self.hypernet(inputs)
+        hyper_wts,loss = self.hypernet(inputs,arg_dict)
         encoder_wts = hyper_wts[:2]
         decoder_wts = hyper_wts[2:]
         self.decoder_wts = decoder_wts

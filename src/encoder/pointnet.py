@@ -302,6 +302,7 @@ class LocalPoolPointnet_Hyper(nn.Module):
         fea = {}
         feats_list = []
         for batch_index in range(batch_size):
+            p_indexed = p[batch_index:batch_index+1]
             if 'xz' in self.plane_type:
                 coord['xz'] = normalize_coordinate(p.clone(), plane='xz', padding=self.padding)
                 index['xz'] = coordinate2index(coord['xz'], self.reso_plane)
@@ -312,10 +313,10 @@ class LocalPoolPointnet_Hyper(nn.Module):
                 coord['yz'] = normalize_coordinate(p.clone(), plane='yz', padding=self.padding)
                 index['yz'] = coordinate2index(coord['yz'], self.reso_plane)
             if 'grid' in self.plane_type:
-                coord['grid'] = normalize_3d_coordinate(p.clone()[batch_index:batch_index+1], padding=self.padding)
+                coord['grid'] = normalize_3d_coordinate(p_indexed.clone(), padding=self.padding)
                 index['grid'] = coordinate2index(coord['grid'], self.reso_grid, coord_type='3d')
 
-            net = F.linear(p[batch_index:batch_index+1],fc_pos[0][batch_index],bias=fc_pos[1][batch_index])
+            net = F.linear(p_indexed,fc_pos[0][batch_index],bias=fc_pos[1][batch_index])
 
             net = self.blocks[0]([block[0][:3],block[1][:2]],net, batch_index)
             for index_block,block_net in enumerate(self.blocks[1:]):
@@ -324,10 +325,9 @@ class LocalPoolPointnet_Hyper(nn.Module):
                 net = torch.cat([net, pooled], dim=2)
                 net = block_net([block[0][index_new*3:(index_new+1)*3] , block[1][index_new*2:(index_new+1)*2]], net, batch_index)
             c = F.linear(net,fc_c[0][batch_index],bias=fc_c[1][batch_index])
-
             
             if 'grid' in self.plane_type:
-                fea_index = self.generate_grid_features(p[batch_index:batch_index+1], c[batch_index:batch_index+1], unet3d,batch_index)
+                fea_index = self.generate_grid_features(p_indexed, c, unet3d, batch_index)
                 feats_list.append(fea_index)
             if 'xz' in self.plane_type:
                 fea['xz'] = self.generate_plane_features(p, c, plane='xz')

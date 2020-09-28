@@ -58,7 +58,7 @@ def update_recursive(dict1, dict2):
 
 
 # Models
-def get_model(cfg, device=None, dataset=None):
+def get_model(cfg, device=None, dataset=None,logger=None):
     ''' Returns the model instance.
     Args:
         cfg (dict): config dictionary
@@ -67,7 +67,7 @@ def get_model(cfg, device=None, dataset=None):
     '''
     method = cfg['method']
     model = method_dict[method].config.get_model(
-        cfg, device=device, dataset=dataset)
+        cfg, device=device, dataset=dataset,logger=logger)
     return model
 
 

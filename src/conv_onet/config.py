@@ -15,7 +15,7 @@ import ipdb
 st = ipdb.set_trace
 
 
-def get_model(cfg, device=None, dataset=None, **kwargs):
+def get_model(cfg, device=None, dataset=None, logger=None, **kwargs):
     ''' Return the Occupancy Network model.
 
     Args:
@@ -120,9 +120,12 @@ def get_model(cfg, device=None, dataset=None, **kwargs):
             if "weight" in name:
                 encoder_kernel_names.append(name)
                 encoder_kernel_shapes.append(param.shape)
+                logger.add_histogram("encoder_weight_"+name, param.clone().cpu().data.numpy(),0)
+
             if "bias" in name:
                 encoder_bias_names.append(name)
                 encoder_bias_shapes.append(param.shape)
+                logger.add_histogram("encoder_bias_"+name, param.clone().cpu().data.numpy(),0)
             # if "final" in name:
             #     st()
             # summ_writer.summ_histogram(name, param.clone().cpu().data.numpy())
@@ -132,12 +135,15 @@ def get_model(cfg, device=None, dataset=None, **kwargs):
             if "weight" in name:
                 decoder_kernel_names.append(name)
                 decoder_kernel_shapes.append(param.shape)
+                logger.add_histogram("decoder_weight_"+name, param.clone().cpu().data.numpy(),0)
             if "bias" in name:
                 decoder_bias_names.append(name)
                 decoder_bias_shapes.append(param.shape)
+                logger.add_histogram("decoder_bias_"+name, param.clone().cpu().data.numpy(),0)
             # if "final" in name:
             #     st()
             # summ_writer.summ_histogram(name, param.clone().cpu().data.numpy())
+        st()
         pickle.dump({"encoder_kernel":[encoder_kernel_names,encoder_kernel_shapes], "encoder_bias":[encoder_bias_names,encoder_bias_shapes], 
             "decoder_kernel":[decoder_kernel_names,decoder_kernel_shapes], "decoder_bias":[decoder_bias_names,decoder_bias_shapes]},open("hypernet.p","wb"))
         # st()

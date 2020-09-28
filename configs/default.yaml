@@ -36,10 +36,13 @@ model:
   decoder_kwargs: {}
   encoder_kwargs: {}
   multi_gpu: false
+  vq_loss_coeff: 10
+  dynamic_dict: false
   c_dim: 512
-  no_load: false
 training:
   out_dir:  out/default
+  lr: 0.0001
+  no_load: false
   batch_size: 64
   print_every: 200
   visualize_every: 1000
