@@ -31,6 +31,8 @@ def get_model(cfg, device=None, dataset=None, logger=None, **kwargs):
     decoder_kwargs = cfg['model']['decoder_kwargs']
     encoder_kwargs = cfg['model']['encoder_kwargs']
     padding = cfg['data']['padding']
+
+    hypernet_params = cfg['model']['hypernet_params']
     
     # for pointcloud_crop
     try: 
@@ -82,7 +84,7 @@ def get_model(cfg, device=None, dataset=None, logger=None, **kwargs):
             encoder = None
 
         model = models.ConvolutionalOccupancyNetwork_Hypernet(
-            decoder, encoder, device=device
+            decoder, encoder, device=device, hypernet_params=hypernet_params
         )
     else:
         decoder = models.decoder_dict[decoder](

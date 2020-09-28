@@ -134,7 +134,7 @@ class ResnetEncoder(nn.Module):
 
 
 class HyperNet(nn.Module):
-    def __init__(self):
+    def __init__(self,hypernet_params=None):
         super(HyperNet, self).__init__()
         self.emb_dimension = 16
         range_val = 1
@@ -144,8 +144,9 @@ class HyperNet(nn.Module):
         lambda_val = 0.5
         min_embed = -0.35
         max_embed = 0.6
-        vqvae_dict_size = 100
-        self.vqvae_dict_size = vqvae_dict_size
+        # vqvae_dict_size = 1000
+        # st()
+        self.vqvae_dict_size = hypernet_params['vqvae_dict_size']
 
         # lambda_val = [lambda_val]*10 + [5,5]
         if False:
@@ -330,9 +331,9 @@ class ConvolutionalOccupancyNetwork_Hypernet(nn.Module):
         device (device): torch device
     '''
 
-    def __init__(self, decoder, encoder=None, device=None):
+    def __init__(self, decoder, encoder=None, device=None, hypernet_params= None):
         super().__init__()
-        self.hypernet = HyperNet()
+        self.hypernet = HyperNet(hypernet_params = hypernet_params)
         self.decoder = decoder.to(device)
 
         if encoder is not None:

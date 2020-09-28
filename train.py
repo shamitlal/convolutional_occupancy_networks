@@ -30,15 +30,16 @@ parser.add_argument('--debug', action='store_true', help='debug mode.')
 parser.add_argument('--exit-after', type=int, default=-1,
                     help='Checkpoint and exit after specified number of seconds'
                          'with exit code 2.')
-if debug:
-    num_val = 5
-else:
-    num_val = 500
 
 args = parser.parse_args()
 cfg = config.load_config(args.config, 'configs/default.yaml')
 is_cuda = (torch.cuda.is_available() and not args.no_cuda)
 device = torch.device("cuda" if is_cuda else "cpu")
+
+if args.debug:
+    num_val = 5
+else:
+    num_val = 500
 # Set t0
 import socket
 if "compute" in socket.gethostname():
