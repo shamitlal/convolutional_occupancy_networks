@@ -1,6 +1,7 @@
 import torch
 import torch.distributions as dist
 from torch import nn
+import pickle
 import os
 from src.encoder import encoder_dict
 from src.conv_onet import models, training
@@ -10,6 +11,8 @@ from src import config
 from src.common import decide_total_volume_range, update_reso
 from torchvision import transforms
 import numpy as np
+import ipdb
+st = ipdb.set_trace
 
 
 def get_model(cfg, device=None, dataset=None, **kwargs):
@@ -20,6 +23,7 @@ def get_model(cfg, device=None, dataset=None, **kwargs):
         device (device): pytorch device
         dataset (dataset): dataset
     '''
+    use_hypernet = cfg['model']['hypernet']
     decoder = cfg['model']['decoder']
     encoder = cfg['model']['encoder']
     dim = cfg['data']['dim']
@@ -59,26 +63,84 @@ def get_model(cfg, device=None, dataset=None, **kwargs):
             if bool(set(fea_type) & set(['xz', 'xy', 'yz'])):
                 encoder_kwargs['plane_resolution'] = dataset.total_reso
     
-
-    decoder = models.decoder_dict[decoder](
-        dim=dim, c_dim=c_dim, padding=padding,
-        **decoder_kwargs
-    )
-
-    if encoder == 'idx':
-        encoder = nn.Embedding(len(dataset), c_dim)
-    elif encoder is not None:
-        encoder = encoder_dict[encoder](
+    if use_hypernet:
+        decoder = models.decoder_dict[decoder+"_hyper"](
             dim=dim, c_dim=c_dim, padding=padding,
-            **encoder_kwargs
+            **decoder_kwargs
+        )
+
+        if encoder == 'idx':
+            assert(False)
+            encoder = nn.Embedding(len(dataset), c_dim)
+        elif encoder is not None:
+            encoder = encoder_dict[encoder+"_hyper"](
+                dim=dim, c_dim=c_dim, padding=padding,
+                **encoder_kwargs
+            )
+        else:
+            assert(False)
+            encoder = None
+
+        model = models.ConvolutionalOccupancyNetwork_Hypernet(
+            decoder, encoder, device=device
         )
     else:
-        encoder = None
+        decoder = models.decoder_dict[decoder](
+            dim=dim, c_dim=c_dim, padding=padding,
+            **decoder_kwargs
+        )
 
-    model = models.ConvolutionalOccupancyNetwork(
-        decoder, encoder, device=device
-    )
+        if encoder == 'idx':
+            encoder = nn.Embedding(len(dataset), c_dim)
+        elif encoder is not None:
+            encoder = encoder_dict[encoder](
+                dim=dim, c_dim=c_dim, padding=padding,
+                **encoder_kwargs
+            )
+        else:
+            encoder = None
 
+        model = models.ConvolutionalOccupancyNetwork(
+            decoder, encoder, device=device
+        )
+    
+    if cfg['model']['vis_weights']:
+        encoder_kernel_names = []
+        encoder_bias_names = []
+        encoder_kernel_shapes = []
+        encoder_bias_shapes = []        
+
+        decoder_kernel_names = []
+        decoder_bias_names = []
+        decoder_kernel_shapes = []
+        decoder_bias_shapes = []
+
+        for name, param in encoder.named_parameters():
+            print(name,param.shape)
+            if "weight" in name:
+                encoder_kernel_names.append(name)
+                encoder_kernel_shapes.append(param.shape)
+            if "bias" in name:
+                encoder_bias_names.append(name)
+                encoder_bias_shapes.append(param.shape)
+            # if "final" in name:
+            #     st()
+            # summ_writer.summ_histogram(name, param.clone().cpu().data.numpy())
+        
+        for name, param in decoder.named_parameters():
+            print(name,param.shape)
+            if "weight" in name:
+                decoder_kernel_names.append(name)
+                decoder_kernel_shapes.append(param.shape)
+            if "bias" in name:
+                decoder_bias_names.append(name)
+                decoder_bias_shapes.append(param.shape)
+            # if "final" in name:
+            #     st()
+            # summ_writer.summ_histogram(name, param.clone().cpu().data.numpy())
+        pickle.dump({"encoder_kernel":[encoder_kernel_names,encoder_kernel_shapes], "encoder_bias":[encoder_bias_names,encoder_bias_shapes], 
+            "decoder_kernel":[decoder_kernel_names,decoder_kernel_shapes], "decoder_bias":[decoder_bias_names,decoder_bias_shapes]},open("hypernet.p","wb"))
+        # st()
     return model
 
 

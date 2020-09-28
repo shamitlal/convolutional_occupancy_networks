@@ -53,12 +53,14 @@ if not os.path.exists(out_dir):
 
 shutil.copyfile(args.config, os.path.join(out_dir, 'config.yaml'))
 
+
+
 # Dataset
 train_dataset = config.get_dataset('train', cfg)
 val_dataset = config.get_dataset('val', cfg, return_idx=True)
 # st()
 train_loader = torch.utils.data.DataLoader(
-    train_dataset, batch_size=1, num_workers=cfg['training']['n_workers'], shuffle=True,
+    train_dataset, batch_size=2, num_workers=cfg['training']['n_workers'], shuffle=True,
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
 
@@ -106,10 +108,12 @@ optimizer = optim.Adam(model.parameters(), lr=1e-4)
 trainer = config.get_trainer(model, optimizer, cfg, device=device)
 
 checkpoint_io = CheckpointIO(out_dir, model=model, optimizer=optimizer)
-try:
-    load_dict = checkpoint_io.load('model.pt')
-except FileExistsError:
-    load_dict = dict()
+load_dict = dict()
+if not cfg['model']['no_load']:
+    try:
+        load_dict = checkpoint_io.load('model.pt')
+    except FileExistsError:
+        load_dict = dict()
 epoch_it = load_dict.get('epoch_it', 0)
 it = load_dict.get('it', 0)
 metric_val_best = load_dict.get(
@@ -138,7 +142,7 @@ while True:
 
     for batch in train_loader:
         it += 1
-        # st()
+
         loss = trainer.train_step(batch)
         logger.add_scalar('train/loss', loss, it)
 

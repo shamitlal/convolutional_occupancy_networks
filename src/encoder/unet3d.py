@@ -3,6 +3,8 @@ Code from the 3D UNet implementation:
 https://github.com/wolny/pytorch-3dunet/
 '''
 import importlib
+import ipdb
+st = ipdb.set_trace
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -49,27 +51,31 @@ def create_conv(in_channels, out_channels, kernel_size, order, num_groups, paddi
             modules.append(('ELU', nn.ELU(inplace=True)))
         elif char == 'c':
             # add learnable bias only in the absence of batchnorm/groupnorm
-            bias = not ('g' in order or 'b' in order)
+            bias_old = not ('g' in order or 'b' in order)
+            bias = bias_old
+            bias = True
             modules.append(('conv', conv3d(in_channels, out_channels, kernel_size, bias, padding=padding)))
         elif char == 'g':
-            is_before_conv = i < order.index('c')
-            if is_before_conv:
-                num_channels = in_channels
-            else:
-                num_channels = out_channels
+            pass
+            # is_before_conv = i < order.index('c')
+            # if is_before_conv:
+            #     num_channels = in_channels
+            # else:
+            #     num_channels = out_channels
 
-            # use only one group if the given number of groups is greater than the number of channels
-            if num_channels < num_groups:
-                num_groups = 1
+            # # use only one group if the given number of groups is greater than the number of channels
+            # if num_channels < num_groups:
+            #     num_groups = 1
 
-            assert num_channels % num_groups == 0, f'Expected number of channels in input to be divisible by num_groups. num_channels={num_channels}, num_groups={num_groups}'
-            modules.append(('groupnorm', nn.GroupNorm(num_groups=num_groups, num_channels=num_channels)))
+            # assert num_channels % num_groups == 0, f'Expected number of channels in input to be divisible by num_groups. num_channels={num_channels}, num_groups={num_groups}'
+            # modules.append(('groupnorm', nn.GroupNorm(num_groups=num_groups, num_channels=num_channels)))
         elif char == 'b':
-            is_before_conv = i < order.index('c')
-            if is_before_conv:
-                modules.append(('batchnorm', nn.BatchNorm3d(in_channels)))
-            else:
-                modules.append(('batchnorm', nn.BatchNorm3d(out_channels)))
+            pass
+            # is_before_conv = i < order.index('c')
+            # if is_before_conv:
+            #     modules.append(('batchnorm', nn.BatchNorm3d(in_channels)))
+            # else:
+            #     modules.append(('batchnorm', nn.BatchNorm3d(out_channels)))
         else:
             raise ValueError(f"Unsupported layer type '{char}'. MUST be one of ['b', 'g', 'r', 'l', 'e', 'c']")
 
@@ -230,6 +236,11 @@ class Encoder(nn.Module):
                                          kernel_size=conv_kernel_size,
                                          order=conv_layer_order,
                                          num_groups=num_groups)
+        bias_names = []
+        for name, param in self.basic_module.named_parameters():
+            if "bias" in name:
+                bias_names.append(name)
+        # st()
 
     def forward(self, x):
         if self.pooling is not None:

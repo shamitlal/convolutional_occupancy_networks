@@ -1,5 +1,7 @@
 import os
 from tqdm import trange
+import ipdb
+st = ipdb.set_trace
 import torch
 from torch.nn import functional as F
 from torch import distributions as dist
@@ -129,13 +131,23 @@ class Trainer(BaseTrainer):
             # add pre-computed normalized coordinates
             p = add_key(p, data.get('points.normalized'), 'p', 'p_n', device=device)
 
-        c = self.model.encode_inputs(inputs)
+        c_new = self.model.encode_inputs(inputs)
+        
+        if isinstance(c_new, list): 
+            c,vqvae_loss = c_new
+        else:
+            c = c_new
 
+        # st()
+        # c = {'grid': torch.zeros([p.shape[0], 32, 32, 32, 32]).cuda()}
+        # st()
         kwargs = {}
         # General points
         logits = self.model.decode(p, c, **kwargs).logits
         loss_i = F.binary_cross_entropy_with_logits(
             logits, occ, reduction='none')
         loss = loss_i.sum(-1).mean()
+        # loss = loss + vqvae_loss*10
+        # st()
 
         return loss

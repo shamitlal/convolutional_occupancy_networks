@@ -1,6 +1,8 @@
 import os
 import glob
 import random
+import ipdb
+st = ipdb.set_trace
 from PIL import Image
 import numpy as np
 import trimesh
@@ -122,6 +124,7 @@ class PointsField(Field):
             idx (int): ID of data point
             category (int): index of category
         '''
+        # st()
         if self.multi_files is None:
             file_path = os.path.join(model_path, self.file_name)
         else:
@@ -216,6 +219,7 @@ class PatchPointCloudField(Field):
             idx (int): ID of data point
             vol (dict): precomputed volume info
         '''
+        st()
         if self.multi_files is None:
             file_path = os.path.join(model_path, self.file_name)
         else:
