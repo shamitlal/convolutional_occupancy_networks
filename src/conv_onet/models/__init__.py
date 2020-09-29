@@ -154,9 +154,9 @@ class HyperNet(nn.Module):
         else:
             self.encodingnet = PointNetPlusPlusMSG()
 
-        self.embedding = nn.Embedding(vqvae_dict_size, self.emb_dimension)
+        self.embedding = nn.Embedding(self.vqvae_dict_size, self.emb_dimension)
         nn.init.normal_(self.embedding.weight, mean=0, std=0.4)
-        self.prototype_usage = torch.zeros(vqvae_dict_size).cuda()
+        self.prototype_usage = torch.zeros(self.vqvae_dict_size).cuda()
         # st()
 
         hypernet_names_shapes = pickle.load(open("hypernet.p","rb"))
