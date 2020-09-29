@@ -167,7 +167,8 @@ def get_inputs_field(mode, cfg):
         ])
         inputs_field = data.PointCloudField(
             cfg['data']['pointcloud_file'], transform,
-            multi_files= cfg['data']['multi_files']
+            multi_files= cfg['data']['multi_files'],
+            cfg=cfg
         )
     elif input_type == 'partial_pointcloud':
         transform = transforms.Compose([

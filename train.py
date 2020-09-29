@@ -12,7 +12,8 @@ from src import config, data
 from src.checkpoints import CheckpointIO
 from collections import defaultdict
 import shutil
-
+import ipdb 
+st = ipdb.set_trace
 
 
 # debug = True
@@ -166,8 +167,10 @@ while True:
 
     for batch in train_loader:
         it += 1
+
         arg_dict = {'logger':logger, 'iteration':it, 'dynamic_dict':dynamic_dict}
         loss = trainer.train_step(batch,vq_loss_coeff=cfg['model']['vq_loss_coeff'],arg_dict=arg_dict)
+
         logger.add_scalar('train/loss', loss, it)
 
         # Print output
