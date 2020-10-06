@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from torch import distributions as dist
 from torch.nn.parameter import Parameter
 from src.conv_onet.models import decoder
+import torchvision.models as models
 from src.encoder.pointnetpp import PointNetPlusPlusSSG
 from src.encoder.pointnetpp import PointNetPlusPlusMSG
 
@@ -98,9 +99,9 @@ class ConvolutionalOccupancyNetwork(nn.Module):
 class ResnetEncoder(nn.Module):
     def __init__(self):
         super(ResnetEncoder, self).__init__()
-        if hyp.use_resnet_for_hypernet:
+        if True:
             self.encodingnet = models.resnet18().cuda()
-            self.encodingnet.fc = nn.Linear(512, hyp.hypernet_input_size).cuda()
+            self.encodingnet.fc = nn.Linear(512, 16).cuda()
         else:
             activ = nn.LeakyReLU
             self.encodingnet = nn.Sequential(
@@ -115,19 +116,19 @@ class ResnetEncoder(nn.Module):
                 nn.Conv2d(32, 64, 4, stride=2, padding=1),
                 nn.AdaptiveAvgPool2d(1),
                 nn.Flatten(),
-                nn.Linear(64, hyp.hypernet_input_size),
+                nn.Linear(64, 16),
                 activ(),
-                nn.Linear(hyp.hypernet_input_size, hyp.hypernet_input_size),
+                nn.Linear(16, 16),
             ).cuda()
-        self.output_layer = nn.Linear(hyp.hypernet_input_size, hyp.total_instances).cuda()  
-        self.criterion = nn.CrossEntropyLoss()   
+        # self.output_layer = nn.Linear(hyp.hypernet_input_size, hyp.total_instances).cuda()  
+        # self.criterion = nn.CrossEntropyLoss()   
 
     def forward(self, input):
         # input -> B, 3, 128, 128  
         # label -> B
-        # st()
+        st()
         encoding = self.encodingnet(input)
-        out = self.output_layer(encoding)
+        # out = self.output_layer(encoding)
         # loss = self.criterion(out, label)
         return encoding
 
@@ -149,7 +150,7 @@ class HyperNet(nn.Module):
         self.vqvae_dict_size = hypernet_params['vqvae_dict_size']
 
         # lambda_val = [lambda_val]*10 + [5,5]
-        if False:
+        if hypernet_params['use_rgb']:
             self.encodingnet = ResnetEncoder()
         else:
             self.encodingnet = PointNetPlusPlusMSG()
@@ -240,25 +241,33 @@ class HyperNet(nn.Module):
 
     def forward(self, input, arg_dict=None):
         loss = 0
-        if arg_dict is not None:
+        # st()
+        do_vis = 'logger' in arg_dict
+        if do_vis:
             logger = arg_dict['logger']
             iteration = arg_dict['iteration']
             dynamic_dict = arg_dict['dynamic_dict']
         
 
-        if arg_dict is not None:        
+        if do_vis:        
             if dynamic_dict:
                 if (iteration%1000) ==0:
                     with torch.no_grad():
                         self.update_embedding_dynamically()
+        # st()
 
         step_check = 250
-        # st()
         B = input.shape[0]
-        embed = self.encodingnet(input)
+        
+        if arg_dict['rgb'] is None:
+            embed = self.encodingnet(input)
+        else:
+            rgb = arg_dict['rgb']
+            embed = self.encodingnet(rgb)
+
         embed_shape = embed.shape            
         
-        if arg_dict is not None:        
+        if 'logger' in arg_dict:        
             if (iteration%step_check) ==0:
                 logger.add_histogram("embedding_generated", embed.clone().cpu().data.numpy(),iteration)    
                 logger.add_histogram("embedding_init", self.embedding.weight.clone().cpu().data.numpy(),iteration)
@@ -271,7 +280,7 @@ class HyperNet(nn.Module):
         for idx in encoding_indices.view(-1):
             self.prototype_usage[idx] += 1
 
-        if arg_dict is not None:        
+        if do_vis:        
             if (iteration%step_check) ==0:
                 logger.add_histogram("embedding_indices_matched", encoding_indices.clone().cpu().data.numpy(),iteration)    
 
@@ -293,7 +302,7 @@ class HyperNet(nn.Module):
         embed = self.hidden2(embed)
         embed = F.leaky_relu(embed)
     
-        if arg_dict is not None:        
+        if do_vis:                
             if (iteration%step_check) ==0:
                 logger.add_histogram("embedding", embed.clone().cpu().data.numpy(),iteration)
 
@@ -316,7 +325,6 @@ class HyperNet(nn.Module):
 
             for ind,weight_name in enumerate(self.decoder_bias_names):
                 logger.add_histogram("decoder_bias_"+weight_name, decoder_bias[ind].clone().cpu().data.numpy(),iteration)
-        # st()
         return [encoder_kernels,encoder_bias,decoder_kernels,decoder_bias], loss
 
 
@@ -331,7 +339,7 @@ class ConvolutionalOccupancyNetwork_Hypernet(nn.Module):
         device (device): torch device
     '''
 
-    def __init__(self, decoder, encoder=None, device=None, hypernet_params= None):
+    def __init__(self, decoder, encoder=None, device=None, hypernet_params= None, no_decoder=False):
         super().__init__()
         self.hypernet = HyperNet(hypernet_params = hypernet_params)
         self.decoder = decoder.to(device)
@@ -340,11 +348,12 @@ class ConvolutionalOccupancyNetwork_Hypernet(nn.Module):
             self.encoder = encoder.to(device)
         else:
             self.encoder = None
-
+        self.no_decoder = no_decoder
         # st()
-        for name, param in self.decoder.named_parameters():
-            print(name)
-            assert False
+        if not no_decoder:
+            for name, param in self.decoder.named_parameters():
+                print(name)
+                assert False
 
         # st()
         for name, param in self.encoder.named_parameters():
@@ -354,7 +363,7 @@ class ConvolutionalOccupancyNetwork_Hypernet(nn.Module):
         self.decoder_wts = None
         self._device = device
 
-    def forward(self, p, inputs, sample=True, **kwargs):
+    def forward(self, p, inputs, sample=True,rgb=None, **kwargs):
         ''' Performs a forward pass through the network.
 
         Args:
@@ -367,8 +376,8 @@ class ConvolutionalOccupancyNetwork_Hypernet(nn.Module):
             batch_size = p['p'].size(0)
         else:
             batch_size = p.size(0)
-        
-        c_new = self.encode_inputs(inputs)
+        # st()
+        c_new = self.encode_inputs(inputs,{'rgb':rgb})
 
         if isinstance(c_new, list): 
             do_vqvae = True
@@ -403,7 +412,10 @@ class ConvolutionalOccupancyNetwork_Hypernet(nn.Module):
             p (tensor): points
             c (tensor): latent conditioned code c
         '''
-        logits = self.decoder(self.decoder_wts, p, c, **kwargs)
+        if self.no_decoder:
+            logits = self.decoder(p, c, **kwargs)
+        else:
+            logits = self.decoder(self.decoder_wts, p, c, **kwargs)
         p_r = dist.Bernoulli(logits=logits)
         return p_r
 

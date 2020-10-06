@@ -28,6 +28,10 @@ data:
   pointcloud_noise: 0.05
   voxels_file: 'model.binvox'
   padding: 0.1
+  single_view_pcd: false
+  warp_to_camera_frame: false  
+  height: 137
+  width: 137    
 model:
   hypernet: false
   vis_weights: false
@@ -35,13 +39,14 @@ model:
   encoder: resnet18
   decoder_kwargs: {}
   encoder_kwargs: {}
-  hypernet_params: {'vqvae_dict_size':100}
+  hypernet_params: {'vqvae_dict_size':100,'use_rgb':false}
   multi_gpu: false
-  vq_loss_coeff: 10
   dynamic_dict: false
+  no_decoder: false
   c_dim: 512
 training:
   out_dir:  out/default
+  vq_loss_coeff: 10
   lr: 0.0001
   no_load: false
   batch_size: 64

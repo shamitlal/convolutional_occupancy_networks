@@ -135,8 +135,8 @@ class PointsField(Field):
             num = np.random.randint(self.multi_files)
             file_path = os.path.join(model_path, self.file_name, '%s_%02d.npz' % (self.file_name, num))
 
-        # st()
         points_dict = np.load(file_path)
+        st()
         points = points_dict['points']
         # Break symmetry if given in float16:
         if points.dtype == np.float16:
@@ -144,8 +144,10 @@ class PointsField(Field):
             points += 1e-4 * np.random.randn(*points.shape)
 
         occupancies = points_dict['occupancies']
+        
         if self.unpackbits:
             occupancies = np.unpackbits(occupancies)[:points.shape[0]]
+
         occupancies = occupancies.astype(np.float32)
 
         if self.cfg['data']['warp_to_camera_frame'] or self.cfg['data']['single_view_pcd']:
@@ -154,7 +156,6 @@ class PointsField(Field):
             camXV_T_origin = torch.tensor(get_4x4(camera[f'world_mat_{camera_view}'])).unsqueeze(0)
             points = apply_4x4(camXV_T_origin, torch.tensor(points).unsqueeze(0))
             points = points.squeeze(0).numpy()
-
         data = {
             None: points,
             'occ': occupancies,
@@ -331,6 +332,7 @@ class PointCloudField(Field):
             zs = xyz_camX[:,2]
             valid_mask = zs < 100
             xyz_camX = xyz_camX[valid_mask]
+            # st()
             num_request = torch.ceil(torch.tensor(self.cfg['data']['pointcloud_n']/xyz_camX.shape[0]))
             num_request = int(num_request.item())
             if num_request > 1:

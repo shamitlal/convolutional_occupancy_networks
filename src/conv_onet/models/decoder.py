@@ -161,6 +161,7 @@ class LocalDecoder_Hyper(nn.Module):
 
 
     def forward(self, hyper_wts, p, c_plane, **kwargs):
+        # st()
         if self.c_dim != 0:
             plane_type = list(c_plane.keys())
             c = 0

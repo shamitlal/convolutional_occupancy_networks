@@ -47,7 +47,16 @@ if "compute" in socket.gethostname():
     cfg['data']['path'] = "/home/mprabhud/shamit/convolutional_occupancy_networks/data//ShapeNet"
 else:
     cfg['data']['path'] = "data/ShapeNet"
+
 t0 = time.time()
+
+exp_name = args.config.split("/")[1][:-5]
+import os
+
+
+cfg['training']['out_dir'] = os.path.join('out/pointcloud',exp_name)
+
+# st()
 
 # Shorthands
 out_dir = cfg['training']['out_dir']
@@ -78,12 +87,12 @@ train_dataset = config.get_dataset('train', cfg)
 val_dataset = config.get_dataset('val', cfg, return_idx=True)
 # st()
 train_loader = torch.utils.data.DataLoader(
-    train_dataset, batch_size=2, num_workers=cfg['training']['n_workers'], shuffle=True,
+    train_dataset, batch_size=2, num_workers=0, shuffle=True,
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
 
 val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=1, num_workers=cfg['training']['n_workers_val'], shuffle=False,
+        val_dataset, batch_size=1, num_workers=0, shuffle=False,
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
 
@@ -166,10 +175,23 @@ while True:
     epoch_it += 1
 
     for batch in train_loader:
+        st()
         it += 1
+        # st()
+        from scipy.misc import imsave
+        # st()
+        # imsave("out.png",batch['inputs.single_view_rgb'][0].permute(1,2,0).cpu().numpy())
+        # st()
+        if cfg['data']['single_view_pcd']:
+            rgb = batch['inputs.single_view_rgb'].to(device)
+            if it%250 == 0:
+                logger.add_image('rgb', ((batch['inputs.single_view_rgb'][0]+0.5)*255).type(torch.ByteTensor), it)
+        else:
+            rgb = None
 
-        arg_dict = {'logger':logger, 'iteration':it, 'dynamic_dict':dynamic_dict}
-        loss = trainer.train_step(batch,vq_loss_coeff=cfg['model']['vq_loss_coeff'],arg_dict=arg_dict)
+        arg_dict = {'logger':logger, 'iteration':it, 'dynamic_dict':dynamic_dict, 'rgb':rgb}
+
+        loss = trainer.train_step(batch,vq_loss_coeff=cfg['training']['vq_loss_coeff'],arg_dict=arg_dict)
 
         logger.add_scalar('train/loss', loss, it)
 
@@ -207,6 +229,7 @@ while True:
             checkpoint_io.save('model_%d.pt' % it, epoch_it=epoch_it, it=it,
                                loss_val_best=metric_val_best)
         # Run validation
+        # st()
         if validate_every > 0 and (it % validate_every) == 0:
             eval_dict = trainer.evaluate(val_loader)
             metric_val = eval_dict[model_selection_metric]

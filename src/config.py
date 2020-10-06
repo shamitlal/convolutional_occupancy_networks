@@ -2,6 +2,8 @@ import yaml
 from torchvision import transforms
 from src import data
 from src import conv_onet
+import ipdb
+st = ipdb.set_trace
 
 
 method_dict = {
@@ -133,7 +135,7 @@ def get_dataset(mode, cfg, return_idx=False):
         inputs_field = get_inputs_field(mode, cfg)
         if inputs_field is not None:
             fields['inputs'] = inputs_field
-
+        # st()
         if return_idx:
             fields['idx'] = data.IndexField()
 
@@ -145,7 +147,6 @@ def get_dataset(mode, cfg, return_idx=False):
         )
     else:
         raise ValueError('Invalid dataset "%s"' % cfg['data']['dataset'])
- 
     return dataset
 
 

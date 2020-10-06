@@ -66,10 +66,17 @@ def get_model(cfg, device=None, dataset=None, logger=None, **kwargs):
                 encoder_kwargs['plane_resolution'] = dataset.total_reso
     
     if use_hypernet:
-        decoder = models.decoder_dict[decoder+"_hyper"](
-            dim=dim, c_dim=c_dim, padding=padding,
-            **decoder_kwargs
-        )
+        # st()
+        if cfg['model']['no_decoder']:
+            decoder = models.decoder_dict[decoder](
+                dim=dim, c_dim=c_dim, padding=padding,
+                **decoder_kwargs
+            )            
+        else:
+            decoder = models.decoder_dict[decoder+"_hyper"](
+                dim=dim, c_dim=c_dim, padding=padding,
+                **decoder_kwargs
+            )
 
         if encoder == 'idx':
             assert(False)
@@ -84,7 +91,7 @@ def get_model(cfg, device=None, dataset=None, logger=None, **kwargs):
             encoder = None
 
         model = models.ConvolutionalOccupancyNetwork_Hypernet(
-            decoder, encoder, device=device, hypernet_params=hypernet_params
+            decoder, encoder, device=device, hypernet_params=hypernet_params, no_decoder=cfg['model']['no_decoder'],
         )
     else:
         decoder = models.decoder_dict[decoder](
@@ -242,6 +249,7 @@ def get_data_fields(mode, cfg):
     input_type = cfg['data']['input_type']
     fields = {}
     if cfg['data']['points_file'] is not None:
+
         if input_type != 'pointcloud_crop':
             fields['points'] = data.PointsField(
                 cfg['data']['points_file'], points_transform,

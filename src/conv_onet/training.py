@@ -76,17 +76,20 @@ class Trainer(BaseTrainer):
         batch_size = points.size(0)
 
         kwargs = {}
-        
+        # st()
         # add pre-computed index
         inputs = add_key(inputs, data.get('inputs.ind'), 'points', 'index', device=device)
         # add pre-computed normalized coordinates
         points = add_key(points, data.get('points.normalized'), 'p', 'p_n', device=device)
         points_iou = add_key(points_iou, data.get('points_iou.normalized'), 'p', 'p_n', device=device)
-
+        if 'inputs.single_view_rgb' in data:
+            rgb = data['inputs.single_view_rgb'].to(device)
+        else:
+            rgb = None
         # Compute iou
         with torch.no_grad():
             p_out = self.model(points_iou, inputs, 
-                               sample=self.eval_sample, **kwargs)
+                               sample=self.eval_sample,rgb=rgb, **kwargs)
 
         occ_iou_np = (occ_iou >= 0.5).cpu().numpy()
         occ_iou_hat_np = (p_out.probs >= threshold).cpu().numpy()
