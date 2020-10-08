@@ -154,6 +154,13 @@ python train.py CONFIG.yaml
 ```
 For available training options, please take a look at `configs/default.yaml`.
 
+To train on matrix, do:
+``ssh cmu`` 
+``con`` (activates conda env)
+``cd /home/shamitl/projects/convolutional_occupancy_networks``
+``python train.py configs/pointcloud/shapenet_grid32_iclr.yaml``
+
+
 ## Further Information
 Please also check out the following concurrent works that either tackle similar problems or share similar ideas:
 - [[CVPR 2020] Jiang et al. - Local Implicit Grid Representations for 3D Scenes](https://arxiv.org/abs/2003.08981)
