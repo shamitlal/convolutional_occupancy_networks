@@ -44,7 +44,7 @@ else:
 # Set t0
 import socket
 if "compute" in socket.gethostname():
-    cfg['data']['path'] = "/home/mprabhud/shamit/convolutional_occupancy_networks/data//ShapeNet"
+    cfg['data']['path'] = "/projects/katefgroup/datasets/ShapeNet/"
 else:
     cfg['data']['path'] = "data/ShapeNet"
 
@@ -57,8 +57,8 @@ import os
 cfg['training']['out_dir'] = os.path.join('out/pointcloud',exp_name)
 
 # st()
-
 # Shorthands
+
 out_dir = cfg['training']['out_dir']
 batch_size = cfg['training']['batch_size']
 backup_every = cfg['training']['backup_every']
@@ -175,7 +175,6 @@ while True:
     epoch_it += 1
 
     for batch in train_loader:
-        st()
         it += 1
         # st()
         from scipy.misc import imsave
@@ -203,6 +202,7 @@ while True:
 
         # Visualize output
         if (visualize_every > 0 and (it % visualize_every) == 0) and False:
+            st()
             print('Visualizing')
             for data_vis in data_vis_list:
                 if cfg['generation']['sliding_window']:
@@ -216,7 +216,7 @@ while True:
                     mesh, stats_dict = out, {}
 
                 mesh.export(os.path.join(out_dir, 'vis', '{}_{}_{}.off'.format(it, data_vis['category'], data_vis['it'])))
-
+                st()
 
         # Save checkpoint
         if (checkpoint_every > 0 and (it % checkpoint_every) == 0):

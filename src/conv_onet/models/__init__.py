@@ -100,8 +100,10 @@ class ResnetEncoder(nn.Module):
     def __init__(self):
         super(ResnetEncoder, self).__init__()
         if True:
-            self.encodingnet = models.resnet18().cuda()
-            self.encodingnet.fc = nn.Linear(512, 16).cuda()
+            # encodingnet = .cuda()
+            encodingnet = list(models.resnet18(pretrained=True).children())[:-1]
+            self.encodingnet = nn.Sequential(*encodingnet).cuda()
+            self.final_layer = nn.Linear(512, 16).cuda()
         else:
             activ = nn.LeakyReLU
             self.encodingnet = nn.Sequential(
@@ -191,12 +193,12 @@ class HyperNet(nn.Module):
 
         decoder_bias_variances = [0.5,  0.1, 0.25, 0.07, 0.25, 0.4, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.05]
         decoder_bias_names = ['fc_p.bias', 'fc_c.0.bias', 'fc_c.1.bias', 'fc_c.2.bias', 'fc_c.3.bias', 'fc_c.4.bias', 'blocks.0.fc_0.bias', 'blocks.0.fc_1.bias', 'blocks.1.fc_0.bias', 'blocks.1.fc_1.bias', 'blocks.2.fc_0.bias', 'blocks.2.fc_1.bias', 'blocks.3.fc_0.bias', 'blocks.3.fc_1.bias', 'blocks.4.fc_0.bias', 'blocks.4.fc_1.bias', 'fc_out.bias']
+        self.decoder_kernelWeights = nn.ParameterList([Parameter(torch.nn.init.normal_(torch.empty(self.emb_dimension, self.total(i)), mean=0, std=decoder_weight_variances[index]), requires_grad=True) for index,i in enumerate(self.decoder_kernel_shape)])
+        self.decoder_biasWeights = nn.ParameterList([Parameter(torch.nn.init.normal_(torch.empty(self.emb_dimension, self.total(i)), mean=0, std=decoder_bias_variances[index]), requires_grad=True) for index,i in enumerate(self.decoder_bias_shape)])
 
         self.encoder_kernelWeights = nn.ParameterList([Parameter(torch.nn.init.normal_(torch.empty(self.emb_dimension, self.total(i)), mean=0, std=encoder_weight_variances[index]), requires_grad=True) for index,i in enumerate(self.encoder_kernel_shape)])
         self.encoder_biasWeights =  nn.ParameterList([Parameter(torch.nn.init.normal_(torch.empty(self.emb_dimension, self.total(i)), mean=0, std=encoder_bias_variances[index]), requires_grad=True) for index,i in enumerate(self.encoder_bias_shape)])
 
-        self.decoder_kernelWeights = nn.ParameterList([Parameter(torch.nn.init.normal_(torch.empty(self.emb_dimension, self.total(i)), mean=0, std=decoder_weight_variances[index]), requires_grad=True) for index,i in enumerate(self.decoder_kernel_shape)])
-        self.decoder_biasWeights = nn.ParameterList([Parameter(torch.nn.init.normal_(torch.empty(self.emb_dimension, self.total(i)), mean=0, std=decoder_bias_variances[index]), requires_grad=True) for index,i in enumerate(self.decoder_bias_shape)])
 
         # st()
         # print("hello")

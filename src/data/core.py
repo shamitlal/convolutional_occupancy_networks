@@ -177,7 +177,7 @@ class Shapes3dDataset(data.Dataset):
 
         if self.transform is not None:
             data = self.transform(data)
-        st()
+        # st()
         return data
     
     def get_vol_info(self, model_path):

@@ -136,7 +136,7 @@ class PointsField(Field):
             file_path = os.path.join(model_path, self.file_name, '%s_%02d.npz' % (self.file_name, num))
 
         points_dict = np.load(file_path)
-        st()
+        # st()
         points = points_dict['points']
         # Break symmetry if given in float16:
         if points.dtype == np.float16:
@@ -232,7 +232,7 @@ class PatchPointCloudField(Field):
             idx (int): ID of data point
             vol (dict): precomputed volume info
         '''
-        st()
+        # st()
         if self.multi_files is None:
             file_path = os.path.join(model_path, self.file_name)
         else:

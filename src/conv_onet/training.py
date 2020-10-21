@@ -156,6 +156,7 @@ class Trainer(BaseTrainer):
         logits = self.model.decode(p, c, **kwargs).logits
         loss_i = F.binary_cross_entropy_with_logits(
             logits, occ, reduction='none')
+        st()
         loss = loss_i.sum(-1).mean()
         # st()
         if do_vqvae:
