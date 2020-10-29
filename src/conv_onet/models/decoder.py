@@ -2,8 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from src.layers import ResnetBlockFC
-from src.common import normalize_coordinate, normalize_3d_coordinate, map2local
-
+from src.common import normalize_coordinate, normalize_3d_coordinate, map2local, normalize_coord_pydisco
+import ipdb 
+st = ipdb.set_trace
 
 class LocalDecoder(nn.Module):
     ''' Decoder.
@@ -55,8 +56,10 @@ class LocalDecoder(nn.Module):
         c = F.grid_sample(c, vgrid, padding_mode='border', align_corners=True, mode=self.sample_mode).squeeze(-1)
         return c
 
-    def sample_grid_feature(self, p, c):
-        p_nor = normalize_3d_coordinate(p.clone(), padding=self.padding) # normalize to the range of (0, 1)
+    def sample_grid_feature(self, p, c, bbox_ends):
+        # p_nor = normalize_3d_coordinate(p.clone(), padding=self.padding) # normalize to the range of (0, 1) # torch.Size([1, 2048, 3])
+        # st()
+        p_nor = normalize_coord_pydisco(p.clone(), bbox_ends[0], plane="grid") # normalize to the range of (0, 1)
         p_nor = p_nor[:, :, None, None].float()
         vgrid = 2.0 * p_nor - 1.0 # normalize to (-1, 1)
         # acutally trilinear interpolation if mode = 'bilinear'
@@ -65,11 +68,13 @@ class LocalDecoder(nn.Module):
 
 
     def forward(self, p, c_plane, **kwargs):
+        # st()
+        bbox_ends = kwargs['bbox_ends']
         if self.c_dim != 0:
             plane_type = list(c_plane.keys())
             c = 0
             if 'grid' in plane_type:
-                c += self.sample_grid_feature(p, c_plane['grid'])
+                c += self.sample_grid_feature(p, c_plane['grid'], bbox_ends)
             if 'xz' in plane_type:
                 c += self.sample_plane_feature(p, c_plane['xz'], plane='xz')
             if 'xy' in plane_type:

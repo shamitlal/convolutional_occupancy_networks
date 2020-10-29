@@ -295,6 +295,14 @@ class PointCloudField(Field):
         self.multi_files = multi_files
         self.cfg=cfg
 
+    def get_bounding_box(self, points):
+
+        points = points[0]
+        xmin, ymin, zmin = torch.min(points, dim=0)[0]
+        xmax, ymax, zmax = torch.max(points, dim=0)[0]
+        
+        return torch.tensor([[xmin, ymin, zmin],[xmax, ymax, zmax]])
+
     def load(self, model_path, idx, category, camera_view):
         ''' Loads the data point.
 
@@ -313,14 +321,17 @@ class PointCloudField(Field):
 
         points = pointcloud_dict['points'].astype(np.float32)
         normals = pointcloud_dict['normals'].astype(np.float32)
-        
+
+        bbox_ends = self.get_bounding_box(torch.tensor(points).unsqueeze(0))
+
         if self.cfg['data']['warp_to_camera_frame'] or self.cfg['data']['single_view_pcd']:
             camera_path = os.path.join(model_path, 'img_choy2016', 'cameras.npz')
             camera = np.load(camera_path)
             camXV_T_origin = torch.tensor(get_4x4(camera[f'world_mat_{camera_view}'])).unsqueeze(0)
             pix_T_camX = torch.tensor(camera[f'camera_mat_{camera_view}']).unsqueeze(0).float()
             points = apply_4x4(camXV_T_origin, torch.tensor(points).unsqueeze(0))
-            # st()
+            bbox_ends = self.get_bounding_box(points)
+
             depth, _ = create_depth_image_from_complete_pointcloud(pix_T_camX, points, self.cfg['data']['height'], self.cfg['data']['width'])
             xyz_camX = depth2pointcloud_cpu(depth, pix_T_camX)
             xyz_camX = xyz_camX[0]
@@ -348,6 +359,7 @@ class PointCloudField(Field):
         if self.transform is not None:
             data = self.transform(data)
         
+        data['bbox_ends'] = bbox_ends
         if self.cfg['data']['single_view_pcd']:
             data['single_view_rgb'] = rgb.numpy()
 

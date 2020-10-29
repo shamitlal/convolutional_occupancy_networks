@@ -2,14 +2,14 @@ method: conv_onet
 data:
   input_type: pointcloud
   classes: null
-  path: data/ShapeNet
+  path: data/ShapeNet_debug
   pointcloud_n: 3000
   pointcloud_noise: 0.005
   points_subsample: 2048
   points_file: points.npz
   points_iou_file: points.npz
-  single_view_pcd: True 
-  warp_to_camera_frame: True
+  single_view_pcd: False 
+  warp_to_camera_frame: False
   # points_unpackbits: false
   voxels_file: null
   height: 137

@@ -4,7 +4,6 @@ from src.utils.libkdtree import KDTree
 import numpy as np
 import math
 
-
 def compute_iou(occ1, occ2):
     ''' Computes the Intersection over Union (IoU) value for two sets of
     occupancy values.
@@ -297,6 +296,29 @@ def normalize_coord(p, vol_range, plane='xz'):
         x = p    
     return x
 
+def normalize_coord_pydisco(p, vol_range, plane='xz'):
+    ''' Normalize coordinate to [0, 1] for sliding-window experiments
+
+    Args:
+        p (tensor): point
+        vol_range (numpy array): volume boundary
+        plane (str): feature type, ['xz', 'xy', 'yz'] - canonical planes; ['grid'] - grid volume
+    '''
+    p[:, :, 0] = (p[:, :, 0] - vol_range[0][0]) / (vol_range[1][0] - vol_range[0][0])
+    p[:, :, 1] = (p[:, :, 1] - vol_range[0][1]) / (vol_range[1][1] - vol_range[0][1])
+    p[:, :, 2] = (p[:, :, 2] - vol_range[0][2]) / (vol_range[1][2] - vol_range[0][2])
+    p = torch.clamp(p, 0, 1 - 10e-4)
+    
+    if plane == 'xz':
+        x = p[:, [0, 2]]
+    elif plane =='xy':
+        x = p[:, [0, 1]]
+    elif plane =='yz':
+        x = p[:, [1, 2]]
+    else:
+        x = p    
+    return x
+
 def coordinate2index(x, reso, coord_type='2d'):
     ''' Normalize coordinate to [0, 1] for unit cube experiments.
         Corresponds to our 3D model
@@ -306,7 +328,7 @@ def coordinate2index(x, reso, coord_type='2d'):
         reso (int): defined resolution
         coord_type (str): coordinate type
     '''
-    x = (x * reso).long()
+    x = (x * reso).long() # this assumes unit cube
     if coord_type == '2d': # plane
         index = x[:, :, 0] + reso * x[:, :, 1]
     elif coord_type == '3d': # grid

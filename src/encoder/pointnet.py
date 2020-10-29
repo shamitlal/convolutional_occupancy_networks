@@ -3,10 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from src.layers import ResnetBlockFC
 from torch_scatter import scatter_mean, scatter_max
-from src.common import coordinate2index, normalize_coordinate, normalize_3d_coordinate, map2local
+from src.common import coordinate2index, normalize_coordinate, normalize_3d_coordinate, map2local, normalize_coord_pydisco
 from src.encoder.unet import UNet
 from src.encoder.unet3d import UNet3D
-
+import ipdb 
+st = ipdb.set_trace
 
 class LocalPoolPointnet(nn.Module):
     ''' PointNet-based encoder network with ResNet blocks for each point.
@@ -116,8 +117,10 @@ class LocalPoolPointnet(nn.Module):
         return c_out.permute(0, 2, 1)
 
 
-    def forward(self, p):
+    def forward(self, p, **kwargs):
+        st()
         batch_size, T, D = p.size()
+        bbox_ends = kwargs['bbox_ends']
 
         # acquire the index for each point
         coord = {}
@@ -132,7 +135,8 @@ class LocalPoolPointnet(nn.Module):
             coord['yz'] = normalize_coordinate(p.clone(), plane='yz', padding=self.padding)
             index['yz'] = coordinate2index(coord['yz'], self.reso_plane)
         if 'grid' in self.plane_type:
-            coord['grid'] = normalize_3d_coordinate(p.clone(), padding=self.padding)
+            # coord['grid'] = normalize_3d_coordinate(p.clone(), padding=self.padding)
+            coord['grid'] = normalize_coord_pydisco(p.clone(), bbox_ends[0], plane="grid")
             index['grid'] = coordinate2index(coord['grid'], self.reso_grid, coord_type='3d')
         
         net = self.fc_pos(p)

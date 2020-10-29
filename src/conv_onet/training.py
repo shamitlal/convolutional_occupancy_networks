@@ -8,6 +8,8 @@ from src.common import (
 )
 from src.utils import visualize as vis
 from src.training import BaseTrainer
+import ipdb 
+st = ipdb.set_trace
 
 class Trainer(BaseTrainer):
     ''' Trainer object for the Occupancy Network.
@@ -42,6 +44,7 @@ class Trainer(BaseTrainer):
         Args:
             data (dict): data dictionary
         '''
+        # st()
         self.model.train()
         self.optimizer.zero_grad()
         loss = self.compute_loss(data)
@@ -121,7 +124,8 @@ class Trainer(BaseTrainer):
         p = data.get('points').to(device)
         occ = data.get('points.occ').to(device)
         inputs = data.get('inputs', torch.empty(p.size(0), 0)).to(device)
-        
+        bbox = data.get('inputs.bbox_ends', torch.tensor([[-0.5,-0.5,-0.5],[0.5,0.5,0.5]]).unsqueeze(0)).to(device)
+
         if 'pointcloud_crop' in data.keys():
             # add pre-computed index
             inputs = add_key(inputs, data.get('inputs.ind'), 'points', 'index', device=device)
@@ -129,9 +133,10 @@ class Trainer(BaseTrainer):
             # add pre-computed normalized coordinates
             p = add_key(p, data.get('points.normalized'), 'p', 'p_n', device=device)
 
-        c = self.model.encode_inputs(inputs)
+        kwargs = {'bbox_ends': bbox}
+        c = self.model.encode_inputs(inputs, **kwargs)
 
-        kwargs = {}
+        
         # General points
         logits = self.model.decode(p, c, **kwargs).logits
         loss_i = F.binary_cross_entropy_with_logits(

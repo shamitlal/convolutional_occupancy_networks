@@ -4,7 +4,7 @@ from src.encoder import (
 
 
 encoder_dict = {
-    'pointnet_local_pool': pointnet.LocalPoolPointnet,
+    'pointnet_local_pool': pointnet.LocalPoolPointnet, # this is used for shapenet
     'pointnet_crop_local_pool': pointnet.PatchLocalPoolPointnet,
     'pointnet_plus_plus_ssg': pointnetpp.PointNetPlusPlusSSG,
     'pointnet_plus_plus_msg': pointnetpp.PointNetPlusPlusMSG,

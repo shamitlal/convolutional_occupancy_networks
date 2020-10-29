@@ -10,7 +10,8 @@ from src import config
 from src.common import decide_total_volume_range, update_reso
 from torchvision import transforms
 import numpy as np
-
+import ipdb 
+st = ipdb.set_trace
 
 def get_model(cfg, device=None, dataset=None, **kwargs):
     ''' Return the Occupancy Network model.
@@ -59,12 +60,13 @@ def get_model(cfg, device=None, dataset=None, **kwargs):
             if bool(set(fea_type) & set(['xz', 'xy', 'yz'])):
                 encoder_kwargs['plane_resolution'] = dataset.total_reso
     
-
+    # st()
     decoder = models.decoder_dict[decoder](
         dim=dim, c_dim=c_dim, padding=padding,
         **decoder_kwargs
     )
 
+    #encoder = pointnet_local_pool
     if encoder == 'idx':
         encoder = nn.Embedding(len(dataset), c_dim)
     elif encoder is not None:

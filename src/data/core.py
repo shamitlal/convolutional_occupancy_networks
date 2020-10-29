@@ -58,6 +58,7 @@ class Shapes3dDataset(data.Dataset):
         self.transform = transform
         self.cfg = cfg
 
+        # st()
         # If categories is None, use all subfolders
         if categories is None:
             categories = os.listdir(dataset_folder)
@@ -79,6 +80,8 @@ class Shapes3dDataset(data.Dataset):
         for c_idx, c in enumerate(categories):
             self.metadata[c]['idx'] = c_idx
 
+        # {'03001627': {'id': '03001627', 'name': 'n/a', 'idx': 0}}
+
         # Get all models
         self.models = []
         for c_idx, c in enumerate(categories):
@@ -99,6 +102,9 @@ class Shapes3dDataset(data.Dataset):
                 if '' in models_c:
                     models_c.remove('')
 
+                '''
+                [{'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}]
+                '''
                 self.models += [
                     {'category': c, 'model': m}
                     for m in models_c
@@ -151,7 +157,7 @@ class Shapes3dDataset(data.Dataset):
             data['pointcloud_crop'] = True
         else:
             info = c_idx
-        
+        # st()
         for field_name, field in self.fields.items():
             try:
                 field_data = field.load(model_path, idx, info, camera_view)
@@ -246,7 +252,6 @@ class Shapes3dDataset(data.Dataset):
                 return False
 
         return True
-
 
 def collate_remove_none(batch):
     ''' Collater that puts each data field into a tensor with outer dimension

@@ -2,7 +2,8 @@ import yaml
 from torchvision import transforms
 from src import data
 from src import conv_onet
-
+import ipdb 
+st = ipdb.set_trace
 
 method_dict = {
     'conv_onet': conv_onet
@@ -129,6 +130,7 @@ def get_dataset(mode, cfg, return_idx=False):
         # Dataset fields
         # Method specific fields (usually correspond to output)
         fields = method_dict[method].config.get_data_fields(mode, cfg)
+        # st()
         # Input fields
         inputs_field = get_inputs_field(mode, cfg)
         if inputs_field is not None:
