@@ -253,6 +253,223 @@ class Shapes3dDataset(data.Dataset):
 
         return True
 
+
+class Shapes3dDataset_pydisco(data.Dataset):
+    ''' 3D Shapes dataset class.
+    '''
+
+    def __init__(self, dataset_folder, fields, split=None,
+                 categories=None, no_except=True, transform=None, cfg=None):
+        ''' Initialization of the the 3D shape dataset.
+
+        Args:
+            dataset_folder (str): dataset folder
+            fields (dict): dictionary of fields
+            split (str): which split is used
+            categories (list): list of categories to use
+            no_except (bool): no exception
+            transform (callable): transformation applied to data points
+            cfg (yaml): config file
+        '''
+        # Attributes
+        self.dataset_folder = dataset_folder
+        self.fields = fields
+        self.no_except = no_except
+        self.transform = transform
+        self.cfg = cfg
+
+        # st()
+        if split == "train":
+            extension = "t.txt"
+        else:
+            extension = "v.txt"
+        
+        # If categories is None, use all subfolders
+        if categories is None:
+            modfile = os.path.join(dataset_folder, cfg['data']['datamod']+extension)
+            modfile_obj = open(modfile, "r")
+            lines = modfile_obj.readlines()
+            splits = [l.split('/')[0] for l in lines]
+            categories = [l.split('/')[1].split('_')[0] for l in lines]
+            categories = [l.split('/')[1].split('_')[0] for l in lines]
+            models = [l.split('/')[1].split('_')[1].split('.p')[0] for l in lines]
+
+        # Read metadata file
+        metadata_file = os.path.join(dataset_folder, 'metadata.yaml')
+
+        if os.path.exists(metadata_file):
+            with open(metadata_file, 'r') as f:
+                self.metadata = yaml.load(f)
+        else:
+            self.metadata = {
+                c: {'id': c, 'name': 'n/a'} for c in categories
+            } 
+        
+        # Set index
+        count = 0
+        for c_idx, c in enumerate(categories):
+            if 'idx' not in self.metadata[c]:
+                self.metadata[c]['idx'] = count
+                count += 1
+
+        # {'03001627': {'id': '03001627', 'name': 'n/a', 'idx': 0}}
+        # Get all models
+        self.models = []
+        for s, c, m in zip(splits, categories, models):
+            self.models += [
+                    {'category': c, 'model': m, 'split': s}
+                ]
+        '''
+        [{'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}, {'category': '03001627', 'model': 'ff2dbafa8d66856419fb4103277a6b93'}]
+        '''
+        
+        # precompute
+        if self.cfg['data']['input_type'] == 'pointcloud_crop': 
+            st() #Check this for pydisco
+            self.split = split
+            # proper resolution for feature plane/volume of the ENTIRE scene
+            query_vol_metric = self.cfg['data']['padding'] + 1
+            unit_size = self.cfg['data']['unit_size']
+            recep_field = 2**(cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
+            if 'unet' in cfg['model']['encoder_kwargs']:
+                depth = cfg['model']['encoder_kwargs']['unet_kwargs']['depth']
+            elif 'unet3d' in cfg['model']['encoder_kwargs']:
+                depth = cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
+            
+            self.depth = depth
+            #! for sliding-window case, pass all points!
+            if self.cfg['generation']['sliding_window']:
+                self.total_input_vol, self.total_query_vol, self.total_reso = \
+                    decide_total_volume_range(100000, recep_field, unit_size, depth) # contain the whole scene
+            else:
+                self.total_input_vol, self.total_query_vol, self.total_reso = \
+                    decide_total_volume_range(query_vol_metric, recep_field, unit_size, depth)
+
+            
+    def __len__(self):
+        ''' Returns the length of the dataset.
+        '''
+        return len(self.models)
+
+    def __getitem__(self, idx):
+        ''' Returns an item of the dataset.
+
+        Args:
+            idx (int): ID of data point
+        '''
+        camera_view = np.random.randint(self.cfg['data']['n_views']) # camera view to which to warp
+        
+        category = self.models[idx]['category']
+        model = self.models[idx]['model']
+        split = self.models[idx]['split']
+        c_idx = self.metadata[category]['idx']
+
+        model_path = os.path.join(self.dataset_folder, split, f"{category}_{model}.p")
+        # model_path = os.path.join(self.dataset_folder, category, model)
+        data = {}
+
+        if self.cfg['data']['input_type'] == 'pointcloud_crop':
+            st() #debug for pydisco
+            info = self.get_vol_info(model_path)
+            data['pointcloud_crop'] = True
+        else:
+            info = c_idx
+        # st()
+        for field_name, field in self.fields.items():
+            try:
+                field_data = field.load(model_path, idx, info, camera_view)
+            except Exception:
+                if self.no_except:
+                    logger.warn(
+                        'Error occured when loading field %s of model %s'
+                        % (field_name, model)
+                    )
+                    return None
+                else:
+                    raise
+
+            if isinstance(field_data, dict):
+                for k, v in field_data.items():
+                    if k is None:
+                        data[field_name] = v
+                    else:
+                        data['%s.%s' % (field_name, k)] = v
+            else:
+                data[field_name] = field_data
+
+        if self.transform is not None:
+            data = self.transform(data)
+
+        return data
+    
+    def get_vol_info(self, model_path):
+        ''' Get crop information
+
+        Args:
+            model_path (str): path to the current data
+        '''
+        query_vol_size = self.cfg['data']['query_vol_size']
+        unit_size = self.cfg['data']['unit_size']
+        field_name = self.cfg['data']['pointcloud_file']
+        plane_type = self.cfg['model']['encoder_kwargs']['plane_type']
+        recep_field = 2**(self.cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
+
+        if self.cfg['data']['multi_files'] is None:
+            file_path = os.path.join(model_path, field_name)
+        else:
+            num = np.random.randint(self.cfg['data']['multi_files'])
+            file_path = os.path.join(model_path, field_name, '%s_%02d.npz' % (field_name, num))
+        
+        points_dict = np.load(file_path)
+        p = points_dict['points']
+        if self.split == 'train':
+            # randomly sample a point as the center of input/query volume
+            p_c = [np.random.uniform(p[:,i].min(), p[:,i].max()) for i in range(3)]
+            # p_c = [np.random.uniform(-0.55, 0.55) for i in range(3)]
+            p_c = np.array(p_c).astype(np.float32)
+            
+            reso = query_vol_size + recep_field - 1
+            # make sure the defined reso can be properly processed by UNet
+            reso = update_reso(reso, self.depth)
+            input_vol_metric = reso * unit_size
+            query_vol_metric = query_vol_size * unit_size
+
+            # bound for the volumes
+            lb_input_vol, ub_input_vol = p_c - input_vol_metric/2, p_c + input_vol_metric/2
+            lb_query_vol, ub_query_vol = p_c - query_vol_metric/2, p_c + query_vol_metric/2
+
+            input_vol = [lb_input_vol, ub_input_vol]
+            query_vol = [lb_query_vol, ub_query_vol]
+        else:
+            reso = self.total_reso
+            input_vol = self.total_input_vol
+            query_vol = self.total_query_vol
+
+        vol_info = {'plane_type': plane_type,
+                    'reso'      : reso,
+                    'input_vol' : input_vol,
+                    'query_vol' : query_vol}
+        return vol_info
+    
+    def get_model_dict(self, idx):
+        return self.models[idx]
+
+    def test_model_complete(self, category, model):
+        ''' Tests if model is complete.
+
+        Args:
+            model (str): modelname
+        '''
+        model_path = os.path.join(self.dataset_folder, category, model)
+        files = os.listdir(model_path)
+        for field_name, field in self.fields.items():
+            if not field.check_complete(files):
+                logger.warn('Field "%s" is incomplete: %s'
+                            % (field_name, model_path))
+                return False
+
+        return True
+
 def collate_remove_none(batch):
     ''' Collater that puts each data field into a tensor with outer dimension
         batch size.

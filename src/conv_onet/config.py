@@ -175,13 +175,22 @@ def get_data_fields(mode, cfg):
     fields = {}
     if cfg['data']['points_file'] is not None:
         if input_type != 'pointcloud_crop':
-            fields['points'] = data.PointsField(
-                cfg['data']['points_file'], points_transform,
-                unpackbits=cfg['data']['points_unpackbits'],
-                multi_files=cfg['data']['multi_files'],
-                cfg=cfg
-            )
+            if cfg['data']['dataloader_type'] == "normal":
+                fields['points'] = data.PointsField(
+                    cfg['data']['points_file'], points_transform,
+                    unpackbits=cfg['data']['points_unpackbits'],
+                    multi_files=cfg['data']['multi_files'],
+                    cfg=cfg
+                )
+            else:
+                fields['points'] = data.PointsField_Pydisco(
+                    cfg['data']['points_file'], points_transform,
+                    unpackbits=cfg['data']['points_unpackbits'],
+                    multi_files=cfg['data']['multi_files'],
+                    cfg=cfg
+                )
         else:
+            st()
             fields['points'] = data.PatchPointsField(
                 cfg['data']['points_file'], 
                 transform=points_transform,
@@ -195,18 +204,27 @@ def get_data_fields(mode, cfg):
         voxels_file = cfg['data']['voxels_file']
         if points_iou_file is not None:
             if input_type == 'pointcloud_crop':
+                st()
                 fields['points_iou'] = data.PatchPointsField(
                 points_iou_file,
                 unpackbits=cfg['data']['points_unpackbits'],
                 multi_files=cfg['data']['multi_files']
                 )
             else:
-                fields['points_iou'] = data.PointsField(
-                    points_iou_file,
-                    unpackbits=cfg['data']['points_unpackbits'],
-                    multi_files=cfg['data']['multi_files'],
-                    cfg=cfg
-                )
+                if cfg['data']['dataloader_type'] == "normal":
+                    fields['points_iou'] = data.PointsField(
+                        points_iou_file,
+                        unpackbits=cfg['data']['points_unpackbits'],
+                        multi_files=cfg['data']['multi_files'],
+                        cfg=cfg
+                    )
+                else:
+                    fields['points_iou'] = data.PointsField_Pydisco(
+                        points_iou_file,
+                        unpackbits=cfg['data']['points_unpackbits'],
+                        multi_files=cfg['data']['multi_files'],
+                        cfg=cfg
+                    )
         if voxels_file is not None:
             fields['voxels'] = data.VoxelsField(voxels_file)
 

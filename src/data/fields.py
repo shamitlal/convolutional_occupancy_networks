@@ -8,6 +8,7 @@ from src.data.core import Field
 from src.utils import binvox_rw
 from src.common import coord2index, normalize_coord
 from torch_scatter import scatter
+import pickle
 import ipdb
 st = ipdb.set_trace
 import torch
@@ -162,6 +163,79 @@ class PointsField(Field):
 
         return data
 
+
+class PointsField_Pydisco(Field):
+    ''' Point Field Pydisco.
+
+    It provides the field to load point data. This is used for the points
+    randomly sampled in the bounding volume of the 3D shape.
+
+    Args:
+        file_name (str): file name
+        transform (list): list of transformations which will be applied to the points tensor
+        multi_files (callable): number of files
+
+    '''
+    def __init__(self, file_name, transform=None, unpackbits=False, multi_files=None, cfg=None):
+        self.file_name = file_name
+        self.transform = transform
+        self.unpackbits = unpackbits
+        self.multi_files = multi_files
+        self.cfg = cfg
+
+    def load(self, model_path, idx, category, camera_view):
+        ''' Loads the data point.
+
+        Args:
+            model_path (str): path to model
+            idx (int): ID of data point
+            category (int): index of category
+        '''
+
+        if self.multi_files is None:
+            file_path = os.path.join(model_path, self.file_name)
+        else:
+            num = np.random.randint(self.multi_files)
+            file_path = os.path.join(model_path, self.file_name, '%s_%02d.npz' % (self.file_name, num))
+
+        points_dict = pickle.load(open(model_path, "rb"))
+        points = points_dict['sdf_points']
+        # Break symmetry if given in float16:
+        if points.dtype == np.float16:
+            points = points.astype(np.float32)
+            points += 1e-4 * np.random.randn(*points.shape)
+
+        occupancies = points_dict['sdf_occupancies']
+        if self.unpackbits:
+            occupancies = np.unpackbits(occupancies)[:points.shape[0]]
+        occupancies = occupancies.astype(np.float32)
+
+        if self.cfg['data']['warp_to_camera_frame'] or self.cfg['data']['single_view_pcd']:
+            origin_T_camXV = points_dict['origin_T_camXs_raw'][camera_view]
+            camXV_T_origin = safe_inverse(torch.tensor(origin_T_camXV).unsqueeze(0))
+            points = apply_4x4(camXV_T_origin, torch.tensor(points).unsqueeze(0))
+            points = points.squeeze(0).numpy()
+
+        data = {
+            None: points,
+            'occ': occupancies,
+        }
+
+        if self.transform is not None:
+            data = self.transform(data)
+
+        return data
+
+def safe_inverse(a): #parallel version
+    B, _, _ = list(a.shape)
+    inv = a.clone()
+    r_transpose = a[:, :3, :3].transpose(1,2) #inverse of rotation matrix
+
+    inv[:, :3, :3] = r_transpose
+    inv[:, :3, 3:4] = -torch.matmul(r_transpose, a[:, :3, 3:4])
+
+    return inv
+
 class VoxelsField(Field):
     ''' Voxel field class.
 
@@ -278,6 +352,7 @@ class PatchPointCloudField(Field):
         complete = (self.file_name in files)
         return complete
 
+
 class PointCloudField(Field):
     ''' Point cloud field.
 
@@ -354,6 +429,122 @@ class PointCloudField(Field):
         data = {
             None: points,
             'normals': normals,
+        }
+
+        if self.transform is not None:
+            data = self.transform(data)
+        
+        data['bbox_ends'] = bbox_ends
+        if self.cfg['data']['single_view_pcd']:
+            data['single_view_rgb'] = rgb.numpy()
+
+        return data
+
+    def check_complete(self, files):
+        ''' Check if field is complete.
+        
+        Args:
+            files: files
+        '''
+        complete = (self.file_name in files)
+        return complete
+
+
+
+class PointCloudField_Pydisco(Field):
+    ''' Point cloud field.
+
+    It provides the field used for point cloud data. These are the points
+    randomly sampled on the mesh.
+
+    Args:
+        file_name (str): file name
+        transform (list): list of transformations applied to data points
+        multi_files (callable): number of files
+    '''
+    def __init__(self, file_name, transform=None, multi_files=None, cfg=None):
+        self.file_name = file_name
+        self.transform = transform
+        self.multi_files = multi_files
+        self.cfg=cfg
+
+    def get_bounding_box(self, points):
+
+        points = points[0]
+        xmin, ymin, zmin = torch.min(points, dim=0)[0]
+        xmax, ymax, zmax = torch.max(points, dim=0)[0]
+        
+        return torch.tensor([[xmin, ymin, zmin],[xmax, ymax, zmax]])
+
+    def load(self, model_path, idx, category, camera_view):
+        ''' Loads the data point.
+
+        Args:
+            model_path (str): path to model
+            idx (int): ID of data point
+            category (int): index of category
+        '''
+        # st()
+        if self.multi_files is None:
+            file_path = os.path.join(model_path, self.file_name)
+        else:
+            num = np.random.randint(self.multi_files)
+            file_path = os.path.join(model_path, self.file_name, '%s_%02d.npz' % (self.file_name, num))
+
+        # pointcloud_dict = np.load(file_path)
+        pointcloud_dict = pickle.load(open(model_path, "rb"))
+
+        points_camX = pointcloud_dict['xyz_camXs_raw']
+        origin_T_camXs = pointcloud_dict['origin_T_camXs_raw']
+        camXV_T_origin = safe_inverse(torch.tensor(origin_T_camXs))
+
+        points = apply_4x4(torch.tensor(origin_T_camXs), torch.tensor(points_camX))
+        pcd = points.reshape(-1, 3)
+        x, y, z = torch.abs(pcd[:,0]), torch.abs(pcd[:,1]), torch.abs(pcd[:,2])
+        cond1 = (x<20)
+        cond2 = (y<20)
+        cond3 = (z<20) 
+        cond = cond1 & cond2 & cond3
+        points = pcd[cond]
+
+        # points = pointcloud_dict['points'].astype(np.float32)
+        # normals = pointcloud_dict['normals'].astype(np.float32)
+
+        bbox_ends = self.get_bounding_box(torch.tensor(points).unsqueeze(0))
+
+        if self.cfg['data']['warp_to_camera_frame'] or self.cfg['data']['single_view_pcd']:
+            # st()
+            camXV_T_origin = camXV_T_origin[camera_view]
+            points = apply_4x4(camXV_T_origin.unsqueeze(0), torch.tensor(points).unsqueeze(0))
+            points = points.numpy()[0]
+            bbox_ends = self.get_bounding_box(torch.tensor(points).unsqueeze(0))
+           
+            if self.cfg['data']['single_view_pcd']:
+                pcd = torch.tensor(points_camX[camera_view])
+                x, y, z = torch.abs(pcd[:,0]), torch.abs(pcd[:,1]), torch.abs(pcd[:,2])
+                cond1 = (x<20)
+                cond2 = (y<20)
+                cond3 = (z<20) 
+                cond = cond1 & cond2 & cond3
+                points = pcd[cond]
+
+                num_request = torch.ceil(torch.tensor(self.cfg['data']['pointcloud_n']/points.shape[0]))
+                num_request = int(num_request.item())
+                if num_request > 1:
+                    points = points.unsqueeze(0).repeat(num_request,1,1).reshape(-1,3)
+
+                points=points.numpy()
+                rgb = pointcloud_dict['rgb_camXs_raw'][camera_view]
+                # rgb = imageio.imread(os.path.join(model_path, 'img_choy2016', str(camera_view).zfill(3)+".jpg"))
+                rgb = torch.tensor(rgb)
+                if rgb.ndim == 2:
+                    rgb = rgb.unsqueeze(-1).repeat(1,1,3)
+                rgb = rgb.permute(2,0,1)/255. - 0.5
+
+        # st()
+        data = {
+            None: points,
+            'normals': points, # just dummy value, i think its used only in qualitative mesh eval
         }
 
         if self.transform is not None:

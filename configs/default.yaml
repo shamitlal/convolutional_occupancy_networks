@@ -1,5 +1,6 @@
 method: conv_onet
 data:
+  dataloader_type: normal
   dataset: Shapes3D
   path: data/ShapeNet
   watertight_path: data/watertight

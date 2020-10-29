@@ -1,9 +1,10 @@
 method: conv_onet
 data:
+  dataloader_type: pydisco
   input_type: pointcloud
   classes: null
-  path: data/ShapeNet_debug
-  # path: /home/shamitl/datasets/shapenet_renders/npys
+  # path: data/ShapeNet_debug
+  path: /home/shamitl/datasets/shapenet_renders/npys
   pointcloud_n: 3000
   pointcloud_noise: 0.005
   points_subsample: 2048
@@ -11,10 +12,11 @@ data:
   points_iou_file: points.npz
   single_view_pcd: True 
   warp_to_camera_frame: True
-  points_unpackbits: True
+  points_unpackbits: False
   voxels_file: null
-  height: 137
-  width: 137
+  height: 256
+  width: 256
+  datamod: split_allp
 model:
   encoder: pointnet_local_pool
   encoder_kwargs:

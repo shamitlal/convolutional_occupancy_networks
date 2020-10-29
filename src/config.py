@@ -138,13 +138,24 @@ def get_dataset(mode, cfg, return_idx=False):
 
         if return_idx:
             fields['idx'] = data.IndexField()
+        # st()
+        if cfg['data']['dataloader_type'] == 'normal':
+            dataset = data.Shapes3dDataset(
+                dataset_folder, fields,
+                split=split,
+                categories=categories,
+                cfg = cfg
+            )
+        elif cfg['data']['dataloader_type'] == 'pydisco':
+            dataset = data.Shapes3dDataset_pydisco(
+                dataset_folder, fields,
+                split=split,
+                categories=categories,
+                cfg = cfg
+            )
+        else:
+            assert False, "Invalid dataloder type"
 
-        dataset = data.Shapes3dDataset(
-            dataset_folder, fields,
-            split=split,
-            categories=categories,
-            cfg = cfg
-        )
     else:
         raise ValueError('Invalid dataset "%s"' % cfg['data']['dataset'])
  
@@ -167,11 +178,19 @@ def get_inputs_field(mode, cfg):
             data.SubsamplePointcloud(cfg['data']['pointcloud_n']),
             data.PointcloudNoise(cfg['data']['pointcloud_noise'])
         ])
-        inputs_field = data.PointCloudField(
-            cfg['data']['pointcloud_file'], transform,
-            multi_files= cfg['data']['multi_files'],
-            cfg=cfg
-        )
+
+        if cfg['data']['dataloader_type'] == "normal":
+            inputs_field = data.PointCloudField(
+                cfg['data']['pointcloud_file'], transform,
+                multi_files= cfg['data']['multi_files'],
+                cfg=cfg
+            )
+        else:
+            inputs_field = data.PointCloudField_Pydisco(
+                cfg['data']['pointcloud_file'], transform,
+                multi_files= cfg['data']['multi_files'],
+                cfg=cfg
+            )
     elif input_type == 'partial_pointcloud':
         transform = transforms.Compose([
             data.SubsamplePointcloud(cfg['data']['pointcloud_n']),
