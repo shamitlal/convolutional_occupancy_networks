@@ -379,7 +379,7 @@ class PointCloudField(Field):
         xmin, ymin, zmin = torch.min(points, dim=0)[0]
         xmax, ymax, zmax = torch.max(points, dim=0)[0]
         
-        return torch.tensor([[xmin, ymin, zmin],[xmax, ymax, zmax]])
+        return torch.tensor([[xmin-0.15, ymin-0.15, zmin-0.15],[xmax+0.15, ymax+0.15, zmax+0.15]])
 
     def load(self, model_path, idx, category, camera_view):
         ''' Loads the data point.
