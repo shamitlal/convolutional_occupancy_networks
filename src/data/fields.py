@@ -215,7 +215,7 @@ class PointsField_Pydisco(Field):
             camXV_T_origin = safe_inverse(torch.tensor(origin_T_camXV).unsqueeze(0))
             points = apply_4x4(camXV_T_origin, torch.tensor(points).unsqueeze(0))
             points = points.squeeze(0).numpy()
-
+        # st()
         data = {
             None: points,
             'occ': occupancies,
@@ -223,6 +223,9 @@ class PointsField_Pydisco(Field):
 
         if self.transform is not None:
             data = self.transform(data)
+
+        data['points_all'] = points
+        data['occupancies_all'] = occupancies
 
         return data
 
@@ -497,6 +500,7 @@ class PointCloudField_Pydisco(Field):
         points_camX = pointcloud_dict['xyz_camXs_raw']
         origin_T_camXs = pointcloud_dict['origin_T_camXs_raw']
         camXV_T_origin = safe_inverse(torch.tensor(origin_T_camXs))
+        pix_T_camX = pointcloud_dict['pix_T_cams_raw'][camera_view]
 
         points = apply_4x4(torch.tensor(origin_T_camXs), torch.tensor(points_camX))
         pcd = points.reshape(-1, 3)
@@ -506,7 +510,6 @@ class PointCloudField_Pydisco(Field):
         cond3 = (z<20) 
         cond = cond1 & cond2 & cond3
         points = pcd[cond]
-
         # points = pointcloud_dict['points'].astype(np.float32)
         # normals = pointcloud_dict['normals'].astype(np.float32)
 
@@ -518,6 +521,12 @@ class PointCloudField_Pydisco(Field):
             points = apply_4x4(camXV_T_origin.unsqueeze(0), torch.tensor(points).unsqueeze(0))
             points = points.numpy()[0]
             bbox_ends = self.get_bounding_box(torch.tensor(points).unsqueeze(0))
+
+            rgb = pointcloud_dict['rgb_camXs_raw'][camera_view]
+            rgb = torch.tensor(rgb)
+            if rgb.ndim == 2:
+                rgb = rgb.unsqueeze(-1).repeat(1,1,3)
+            rgb = rgb.permute(2,0,1)/255. - 0.5
            
             if self.cfg['data']['single_view_pcd']:
                 pcd = torch.tensor(points_camX[camera_view])
@@ -534,24 +543,22 @@ class PointCloudField_Pydisco(Field):
                     points = points.unsqueeze(0).repeat(num_request,1,1).reshape(-1,3)
 
                 points=points.numpy()
-                rgb = pointcloud_dict['rgb_camXs_raw'][camera_view]
-                # rgb = imageio.imread(os.path.join(model_path, 'img_choy2016', str(camera_view).zfill(3)+".jpg"))
-                rgb = torch.tensor(rgb)
-                if rgb.ndim == 2:
-                    rgb = rgb.unsqueeze(-1).repeat(1,1,3)
-                rgb = rgb.permute(2,0,1)/255. - 0.5
 
         # st()
+        points_all = points
         data = {
             None: points,
             'normals': points, # just dummy value, i think its used only in qualitative mesh eval
         }
-
+        # st()
         if self.transform is not None:
             data = self.transform(data)
         
         data['bbox_ends'] = bbox_ends
-        if self.cfg['data']['single_view_pcd']:
+        data['pix_T_camX'] = pix_T_camX
+        data['camX_T_origin'] = camXV_T_origin
+        data['points_all'] = points_all
+        if self.cfg['data']['warp_to_camera_frame'] or self.cfg['data']['single_view_pcd']:
             data['single_view_rgb'] = rgb.numpy()
 
         return data

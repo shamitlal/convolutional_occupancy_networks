@@ -118,7 +118,7 @@ class LocalPoolPointnet(nn.Module):
 
 
     def forward(self, p, **kwargs):
-        st()
+        # st()
         batch_size, T, D = p.size()
         bbox_ends = kwargs['bbox_ends']
 

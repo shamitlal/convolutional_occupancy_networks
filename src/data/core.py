@@ -290,7 +290,7 @@ class Shapes3dDataset_pydisco(data.Dataset):
             modfile_obj = open(modfile, "r")
             lines = modfile_obj.readlines()
             splits = [l.split('/')[0] for l in lines]
-            categories = [l.split('/')[1].split('_')[0] for l in lines]
+            # categories = [l.split('/')[1].split('_')[0] for l in lines]
             categories = [l.split('/')[1].split('_')[0] for l in lines]
             models = [l.split('/')[1].split('_')[1].split('.p')[0] for l in lines]
 

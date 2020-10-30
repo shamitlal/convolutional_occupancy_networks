@@ -12,6 +12,7 @@ from src import config, data
 from src.checkpoints import CheckpointIO
 from collections import defaultdict
 import shutil
+import tb_vis
 import ipdb 
 st = ipdb.set_trace
 
@@ -20,10 +21,13 @@ parser = argparse.ArgumentParser(
     description='Train a 3D reconstruction model.'
 )
 parser.add_argument('config', type=str, help='Path to config file.')
+parser.add_argument('--run_name', type=str, help='runname', default='run1')
 parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
 parser.add_argument('--exit-after', type=int, default=-1,
                     help='Checkpoint and exit after specified number of seconds'
                          'with exit code 2.')
+parser.add_argument('--log_every', type=int, default=10,
+                    help='Number of iterations to log after')
 
 args = parser.parse_args()
 cfg = config.load_config(args.config, 'configs/default.yaml')
@@ -59,12 +63,12 @@ train_dataset = config.get_dataset('train', cfg)
 val_dataset = config.get_dataset('val', cfg, return_idx=True)
 # st()
 train_loader = torch.utils.data.DataLoader(
-    train_dataset, batch_size=1, num_workers=0*cfg['training']['n_workers'], shuffle=True,
+    train_dataset, batch_size=1, num_workers=cfg['training']['n_workers'], shuffle=True,
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
 
 val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=1, num_workers=0*cfg['training']['n_workers_val'], shuffle=False,
+        val_dataset, batch_size=1, num_workers=cfg['training']['n_workers_val'], shuffle=False,
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
 
@@ -120,7 +124,7 @@ if metric_val_best == np.inf or metric_val_best == -np.inf:
     metric_val_best = -model_selection_sign * np.inf
 print('Current best validation metric (%s): %.8f'
       % (model_selection_metric, metric_val_best))
-logger = SummaryWriter(os.path.join(out_dir, 'logs'))
+logger = SummaryWriter(os.path.join(out_dir, 'logs', args.run_name))
 
 # Shorthands
 print_every = cfg['training']['print_every']
@@ -139,6 +143,23 @@ while True:
 
     for batch in train_loader:
         it += 1
+        bbox_ends = batch['inputs.bbox_ends']
+
+        if it % args.log_every == 0:
+            # Visualize stuff
+            if 'inputs.single_view_rgb' in batch:
+                tb_vis.summ_rgb("rgb_camX", logger, batch['inputs.single_view_rgb'], it)
+                tb_vis.summ_box("bbox", logger, batch['inputs.single_view_rgb'], bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), it)
+                tb_vis.summ_sdf_occupancies_single("SDF_sampled", logger, batch['points'].cuda(), batch['points.occ'].cuda(), batch['inputs.single_view_rgb'].cuda(), batch['inputs.pix_T_camX'].cuda(), it)
+                tb_vis.summ_sdf_occupancies_single("SDF_all", logger, batch['points.points_all'].cuda(), batch['points.occupancies_all'].cuda(), batch['inputs.single_view_rgb'].cuda(), batch['inputs.pix_T_camX'].cuda(), it)
+
+            tb_vis.summ_depth("Depth_all", logger, batch['inputs.pix_T_camX'].cuda(), batch['inputs.points_all'].cuda(), cfg['data']['height'], cfg['data']['width'], it)
+            tb_vis.summ_depth("Depth_sampled", logger, batch['inputs.pix_T_camX'].cuda(), batch['inputs'].cuda(), cfg['data']['height'], cfg['data']['width'], it)
+            
+            tb_vis.summ_occ_grid("Occ_all", logger, bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), batch['inputs.points_all'].cuda(), cfg['model']['encoder_kwargs']['grid_resolution'], it)
+            tb_vis.summ_occ_grid("Occ_sampled", logger, bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), batch['inputs'].cuda(), cfg['model']['encoder_kwargs']['grid_resolution'], it)
+
+        print("Processing iteration: ", it)
         loss = trainer.train_step(batch)
         logger.add_scalar('train/loss', loss, it)
 
