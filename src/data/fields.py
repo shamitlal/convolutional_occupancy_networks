@@ -183,6 +183,14 @@ class PointsField_Pydisco(Field):
         self.multi_files = multi_files
         self.cfg = cfg
 
+    def get_bounding_box(self, points):
+
+        points = points[0]
+        xmin, ymin, zmin = torch.min(points, dim=0)[0]
+        xmax, ymax, zmax = torch.max(points, dim=0)[0]
+        
+        return torch.tensor([[xmin-0.15, ymin-0.15, zmin-0.15],[xmax+0.15, ymax+0.15, zmax+0.15]])
+
     def load(self, model_path, idx, category, camera_view):
         ''' Loads the data point.
 
@@ -199,6 +207,21 @@ class PointsField_Pydisco(Field):
             file_path = os.path.join(model_path, self.file_name, '%s_%02d.npz' % (self.file_name, num))
 
         points_dict = pickle.load(open(model_path, "rb"))
+
+
+        xyz_camX = points_dict['xyz_camXs_raw']
+        origin_T_camXs = points_dict['origin_T_camXs_raw']
+        xyz_origin = apply_4x4(torch.tensor(origin_T_camXs), torch.tensor(xyz_camX))
+        pcd = xyz_origin.reshape(-1, 3)
+        x, y, z = torch.abs(pcd[:,0]), torch.abs(pcd[:,1]), torch.abs(pcd[:,2])
+        cond1 = (x<20)
+        cond2 = (y<20)
+        cond3 = (z<20) 
+        cond = cond1 & cond2 & cond3
+        xyz_origin = pcd[cond]
+        bbox_ends = self.get_bounding_box(torch.tensor(xyz_origin).unsqueeze(0)) # bbox in origin        
+
+
         points = points_dict['sdf_points']
         # Break symmetry if given in float16:
         if points.dtype == np.float16:
@@ -215,7 +238,23 @@ class PointsField_Pydisco(Field):
             camXV_T_origin = safe_inverse(torch.tensor(origin_T_camXV).unsqueeze(0))
             points = apply_4x4(camXV_T_origin, torch.tensor(points).unsqueeze(0))
             points = points.squeeze(0).numpy()
-        # st()
+
+            xyz_camXV = apply_4x4(camXV_T_origin, torch.tensor(xyz_origin).unsqueeze(0))
+            xyz_camXV = xyz_camXV.numpy()[0]
+            bbox_ends = self.get_bounding_box(torch.tensor(xyz_camXV).unsqueeze(0))
+
+        # Only take sdfs inside bbox
+        x, y, z = points[:, 0],points[:, 1],points[:, 2]
+        cond1 = x > bbox_ends.numpy()[0,0]
+        cond2 = x < bbox_ends.numpy()[1,0]
+        cond3 = y > bbox_ends.numpy()[0,1]
+        cond4 = y < bbox_ends.numpy()[1,1]
+        cond5 = z > bbox_ends.numpy()[0,2]
+        cond6 = z < bbox_ends.numpy()[1,2]
+        cond = cond1 & cond2 & cond3 & cond4 & cond5 & cond6 
+        points = points[cond]
+        occupancies = occupancies[cond]
+
         data = {
             None: points,
             'occ': occupancies,
@@ -477,7 +516,7 @@ class PointCloudField_Pydisco(Field):
         xmin, ymin, zmin = torch.min(points, dim=0)[0]
         xmax, ymax, zmax = torch.max(points, dim=0)[0]
         
-        return torch.tensor([[xmin, ymin, zmin],[xmax, ymax, zmax]])
+        return torch.tensor([[xmin - 0.15, ymin - 0.15, zmin - 0.15],[xmax + 0.15, ymax + 0.15, zmax + 0.15]])
 
     def load(self, model_path, idx, category, camera_view):
         ''' Loads the data point.

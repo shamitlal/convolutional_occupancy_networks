@@ -3,6 +3,8 @@ import torch
 from src.utils.libkdtree import KDTree
 import numpy as np
 import math
+import ipdb 
+st = ipdb.set_trace
 
 def compute_iou(occ1, occ2):
     ''' Computes the Intersection over Union (IoU) value for two sets of
@@ -285,6 +287,7 @@ def normalize_coord(p, vol_range, plane='xz'):
     p[:, 0] = (p[:, 0] - vol_range[0][0]) / (vol_range[1][0] - vol_range[0][0])
     p[:, 1] = (p[:, 1] - vol_range[0][1]) / (vol_range[1][1] - vol_range[0][1])
     p[:, 2] = (p[:, 2] - vol_range[0][2]) / (vol_range[1][2] - vol_range[0][2])
+    # st()
     
     if plane == 'xz':
         x = p[:, [0, 2]]
@@ -307,6 +310,7 @@ def normalize_coord_pydisco(p, vol_range, plane='xz'):
     p[:, :, 0] = (p[:, :, 0] - vol_range[0][0]) / (vol_range[1][0] - vol_range[0][0])
     p[:, :, 1] = (p[:, :, 1] - vol_range[0][1]) / (vol_range[1][1] - vol_range[0][1])
     p[:, :, 2] = (p[:, :, 2] - vol_range[0][2]) / (vol_range[1][2] - vol_range[0][2])
+    # st()
     p = torch.clamp(p, 0, 1 - 10e-4)
     
     if plane == 'xz':
