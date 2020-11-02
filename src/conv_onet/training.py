@@ -1,5 +1,7 @@
 import os
 from tqdm import trange
+import ipdb
+st = ipdb.set_trace
 import torch
 from torch.nn import functional as F
 from torch import distributions as dist
@@ -38,7 +40,7 @@ class Trainer(BaseTrainer):
         if vis_dir is not None and not os.path.exists(vis_dir):
             os.makedirs(vis_dir)
 
-    def train_step(self, data):
+    def train_step(self, data, vq_loss_coeff=0.0,arg_dict=None):
         ''' Performs a training step.
 
         Args:
@@ -47,7 +49,7 @@ class Trainer(BaseTrainer):
         # st()
         self.model.train()
         self.optimizer.zero_grad()
-        loss = self.compute_loss(data)
+        loss = self.compute_loss(data,vq_loss_coeff=vq_loss_coeff,arg_dict=arg_dict)
         loss.backward()
         self.optimizer.step()
 
@@ -77,17 +79,20 @@ class Trainer(BaseTrainer):
         batch_size = points.size(0)
 
         kwargs = {}
-        
+        # st()
         # add pre-computed index
         inputs = add_key(inputs, data.get('inputs.ind'), 'points', 'index', device=device)
         # add pre-computed normalized coordinates
         points = add_key(points, data.get('points.normalized'), 'p', 'p_n', device=device)
         points_iou = add_key(points_iou, data.get('points_iou.normalized'), 'p', 'p_n', device=device)
-
+        if 'inputs.single_view_rgb' in data:
+            rgb = data['inputs.single_view_rgb'].to(device)
+        else:
+            rgb = None
         # Compute iou
         with torch.no_grad():
             p_out = self.model(points_iou, inputs, 
-                               sample=self.eval_sample, **kwargs)
+                               sample=self.eval_sample,rgb=rgb, **kwargs)
 
         occ_iou_np = (occ_iou >= 0.5).cpu().numpy()
         occ_iou_hat_np = (p_out.probs >= threshold).cpu().numpy()
@@ -115,16 +120,22 @@ class Trainer(BaseTrainer):
 
         return eval_dict
 
-    def compute_loss(self, data):
+    def compute_loss(self, data,vq_loss_coeff=0.0,arg_dict=None):
         ''' Computes the loss.
         Args:
             data (dict): data dictionary
         '''
         device = self.device
+        do_vqvae = False
+
         p = data.get('points').to(device)
         occ = data.get('points.occ').to(device)
         inputs = data.get('inputs', torch.empty(p.size(0), 0)).to(device)
+
         bbox = data.get('inputs.bbox_ends', torch.tensor([[-0.5,-0.5,-0.5],[0.5,0.5,0.5]]).unsqueeze(0)).to(device)
+
+        logger = arg_dict['logger']
+        
 
         if 'pointcloud_crop' in data.keys():
             # add pre-computed index
@@ -133,14 +144,28 @@ class Trainer(BaseTrainer):
             # add pre-computed normalized coordinates
             p = add_key(p, data.get('points.normalized'), 'p', 'p_n', device=device)
 
-        kwargs = {'bbox_ends': bbox}
-        c = self.model.encode_inputs(inputs, **kwargs)
 
-        
+        kwargs = {'bbox_ends': bbox,'arg_dict':arg_dict}
+        c_new = self.model.encode_inputs(inputs, **kwargs)
+
+    
+
+        if isinstance(c_new, list): 
+            do_vqvae = True
+            c,vqvae_loss = c_new
+        else:
+            c = c_new
+
+        # st()
+        # c = {'grid': torch.zeros([p.shape[0], 32, 32, 32, 32]).cuda()}
+        # st()
         # General points
         logits = self.model.decode(p, c, **kwargs).logits
         loss_i = F.binary_cross_entropy_with_logits(
             logits, occ, reduction='none')
+        # st()
         loss = loss_i.sum(-1).mean()
-
+        # st()
+        if do_vqvae:
+            loss = loss + vqvae_loss*vq_loss_coeff
         return loss

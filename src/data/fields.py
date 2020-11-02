@@ -1,6 +1,8 @@
 import os
 import glob
 import random
+import ipdb
+st = ipdb.set_trace
 from PIL import Image
 import numpy as np
 import trimesh
@@ -127,14 +129,15 @@ class PointsField(Field):
             idx (int): ID of data point
             category (int): index of category
         '''
+        # st()
         if self.multi_files is None:
             file_path = os.path.join(model_path, self.file_name)
         else:
             num = np.random.randint(self.multi_files)
             file_path = os.path.join(model_path, self.file_name, '%s_%02d.npz' % (self.file_name, num))
 
-        # st()
         points_dict = np.load(file_path)
+        # st()
         points = points_dict['points']
         # Break symmetry if given in float16:
         if points.dtype == np.float16:
@@ -142,8 +145,10 @@ class PointsField(Field):
             points += 1e-4 * np.random.randn(*points.shape)
 
         occupancies = points_dict['occupancies']
+        
         if self.unpackbits:
             occupancies = np.unpackbits(occupancies)[:points.shape[0]]
+
         occupancies = occupancies.astype(np.float32)
 
         if self.cfg['data']['warp_to_camera_frame'] or self.cfg['data']['single_view_pcd']:
@@ -152,7 +157,6 @@ class PointsField(Field):
             camXV_T_origin = torch.tensor(get_4x4(camera[f'world_mat_{camera_view}'])).unsqueeze(0)
             points = apply_4x4(camXV_T_origin, torch.tensor(points).unsqueeze(0))
             points = points.squeeze(0).numpy()
-
         data = {
             None: points,
             'occ': occupancies,
@@ -199,7 +203,6 @@ class PointsField_Pydisco(Field):
             idx (int): ID of data point
             category (int): index of category
         '''
-
         if self.multi_files is None:
             file_path = os.path.join(model_path, self.file_name)
         else:
@@ -252,8 +255,18 @@ class PointsField_Pydisco(Field):
         cond5 = z > bbox_ends.numpy()[0,2]
         cond6 = z < bbox_ends.numpy()[1,2]
         cond = cond1 & cond2 & cond3 & cond4 & cond5 & cond6 
+
         points = points[cond]
         occupancies = occupancies[cond]
+        # st()
+        num = points.shape[0]
+        all_indexes = list(range(num))
+        random.seed(1)
+        random.shuffle(all_indexes)
+        filtered_indexes = all_indexes[:100000]
+
+        points = points[filtered_indexes]
+        occupancies = occupancies[filtered_indexes]
 
         data = {
             None: points,
@@ -265,8 +278,9 @@ class PointsField_Pydisco(Field):
 
         data['points_all'] = points
         data['occupancies_all'] = occupancies
-
         return data
+
+
 
 def safe_inverse(a): #parallel version
     B, _, _ = list(a.shape)
@@ -344,6 +358,7 @@ class PatchPointCloudField(Field):
             idx (int): ID of data point
             vol (dict): precomputed volume info
         '''
+        # st()
         if self.multi_files is None:
             file_path = os.path.join(model_path, self.file_name)
         else:
@@ -455,6 +470,7 @@ class PointCloudField(Field):
             zs = xyz_camX[:,2]
             valid_mask = zs < 100
             xyz_camX = xyz_camX[valid_mask]
+            # st()
             num_request = torch.ceil(torch.tensor(self.cfg['data']['pointcloud_n']/xyz_camX.shape[0]))
             num_request = int(num_request.item())
             if num_request > 1:
@@ -527,6 +543,7 @@ class PointCloudField_Pydisco(Field):
             category (int): index of category
         '''
         # st()
+        # st()
         if self.multi_files is None:
             file_path = os.path.join(model_path, self.file_name)
         else:
@@ -551,9 +568,7 @@ class PointCloudField_Pydisco(Field):
         points = pcd[cond]
         # points = pointcloud_dict['points'].astype(np.float32)
         # normals = pointcloud_dict['normals'].astype(np.float32)
-
         bbox_ends = self.get_bounding_box(torch.tensor(points).unsqueeze(0))
-
         if self.cfg['data']['warp_to_camera_frame'] or self.cfg['data']['single_view_pcd']:
             # st()
             camXV_T_origin = camXV_T_origin[camera_view]
@@ -583,7 +598,6 @@ class PointCloudField_Pydisco(Field):
 
                 points=points.numpy()
 
-        # st()
         points_all = points
         data = {
             None: points,
@@ -596,10 +610,10 @@ class PointCloudField_Pydisco(Field):
         data['bbox_ends'] = bbox_ends
         data['pix_T_camX'] = pix_T_camX
         data['camX_T_origin'] = camXV_T_origin
-        data['points_all'] = points_all
+        # data['points_all'] = points_all
         if self.cfg['data']['warp_to_camera_frame'] or self.cfg['data']['single_view_pcd']:
             data['single_view_rgb'] = rgb.numpy()
-
+        # st()
         return data
 
     def check_complete(self, files):

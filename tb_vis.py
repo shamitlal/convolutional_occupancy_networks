@@ -14,7 +14,7 @@ def back2color(i):
 def summ_rgb(name, logger, rgb, iteration):
     # if iteration%log_every:
     rgb = back2color(rgb)
-    logger.add_image(name, rgb[0])
+    logger.add_image(name, rgb[0] ,global_step=iteration)
 
 def summ_depth(name, logger, pix_T_camX, xyz_camX, H, W, it, return_only=False):
     depth_camX, _ = create_depth_image(pix_T_camX, xyz_camX, H, W)

@@ -149,6 +149,7 @@ class Shapes3dDataset(data.Dataset):
         model = self.models[idx]['model']
         c_idx = self.metadata[category]['idx']
 
+
         model_path = os.path.join(self.dataset_folder, category, model)
         data = {}
 
@@ -157,7 +158,7 @@ class Shapes3dDataset(data.Dataset):
             data['pointcloud_crop'] = True
         else:
             info = c_idx
-        # st()
+
         for field_name, field in self.fields.items():
             try:
                 field_data = field.load(model_path, idx, info, camera_view)
@@ -182,7 +183,7 @@ class Shapes3dDataset(data.Dataset):
 
         if self.transform is not None:
             data = self.transform(data)
-
+        # st()
         return data
     
     def get_vol_info(self, model_path):
@@ -374,7 +375,8 @@ class Shapes3dDataset_pydisco(data.Dataset):
             data['pointcloud_crop'] = True
         else:
             info = c_idx
-        # st()
+        
+
         for field_name, field in self.fields.items():
             try:
                 field_data = field.load(model_path, idx, info, camera_view)
@@ -399,7 +401,6 @@ class Shapes3dDataset_pydisco(data.Dataset):
 
         if self.transform is not None:
             data = self.transform(data)
-
         return data
     
     def get_vol_info(self, model_path):

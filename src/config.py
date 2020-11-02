@@ -2,8 +2,12 @@ import yaml
 from torchvision import transforms
 from src import data
 from src import conv_onet
+
 import ipdb 
 st = ipdb.set_trace
+
+
+
 
 method_dict = {
     'conv_onet': conv_onet
@@ -59,7 +63,7 @@ def update_recursive(dict1, dict2):
 
 
 # Models
-def get_model(cfg, device=None, dataset=None):
+def get_model(cfg, device=None, dataset=None,logger=None):
     ''' Returns the model instance.
     Args:
         cfg (dict): config dictionary
@@ -68,7 +72,7 @@ def get_model(cfg, device=None, dataset=None):
     '''
     method = cfg['method']
     model = method_dict[method].config.get_model(
-        cfg, device=device, dataset=dataset)
+        cfg, device=device, dataset=dataset,logger=logger)
     return model
 
 
@@ -135,9 +139,11 @@ def get_dataset(mode, cfg, return_idx=False):
         inputs_field = get_inputs_field(mode, cfg)
         if inputs_field is not None:
             fields['inputs'] = inputs_field
-
+        # st()
         if return_idx:
             fields['idx'] = data.IndexField()
+        
+
         # st()
         if cfg['data']['dataloader_type'] == 'normal':
             dataset = data.Shapes3dDataset(
@@ -158,7 +164,6 @@ def get_dataset(mode, cfg, return_idx=False):
 
     else:
         raise ValueError('Invalid dataset "%s"' % cfg['data']['dataset'])
- 
     return dataset
 
 
@@ -178,7 +183,7 @@ def get_inputs_field(mode, cfg):
             data.SubsamplePointcloud(cfg['data']['pointcloud_n']),
             data.PointcloudNoise(cfg['data']['pointcloud_noise'])
         ])
-
+        # st()
         if cfg['data']['dataloader_type'] == "normal":
             inputs_field = data.PointCloudField(
                 cfg['data']['pointcloud_file'], transform,
@@ -205,7 +210,6 @@ def get_inputs_field(mode, cfg):
             data.SubsamplePointcloud(cfg['data']['pointcloud_n']),
             data.PointcloudNoise(cfg['data']['pointcloud_noise'])
         ])
-    
         inputs_field = data.PatchPointCloudField(
             cfg['data']['pointcloud_file'], 
             transform,

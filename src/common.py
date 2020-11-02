@@ -2,6 +2,8 @@
 import torch
 from src.utils.libkdtree import KDTree
 import numpy as np
+import ipdb
+st = ipdb.set_trace
 import math
 import ipdb 
 st = ipdb.set_trace
@@ -266,7 +268,6 @@ def normalize_3d_coordinate(p, padding=0.1):
         p (tensor): point
         padding (float): conventional padding paramter of ONet for unit cube, so [-0.5, 0.5] -> [-0.55, 0.55]
     '''
-    
     p_nor = p / (1 + padding + 10e-4) # (-0.5, 0.5)
     p_nor = p_nor + 0.5 # range (0, 1)
     # f there are outliers out of the range
@@ -333,6 +334,7 @@ def coordinate2index(x, reso, coord_type='2d'):
         coord_type (str): coordinate type
     '''
     x = (x * reso).long() # this assumes unit cube
+    # st()
     if coord_type == '2d': # plane
         index = x[:, :, 0] + reso * x[:, :, 1]
     elif coord_type == '3d': # grid
