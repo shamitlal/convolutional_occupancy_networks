@@ -54,7 +54,7 @@ class ConvolutionalOccupancyNetwork(nn.Module):
             batch_size = p['p'].size(0)
         else:
             batch_size = p.size(0)
-        c = self.encode_inputs(inputs)
+        c = self.encode_inputs(inputs,**kwargs)
         p_r = self.decode(p, c, **kwargs)
         return p_r
 
@@ -360,7 +360,7 @@ class ConvolutionalOccupancyNetwork_Hypernet(nn.Module):
         else:
             batch_size = p.size(0)
         # st()
-        c_new = self.encode_inputs(inputs,{'rgb':rgb})
+        c_new = self.encode_inputs(inputs,**kwargs)
 
         if isinstance(c_new, list): 
             do_vqvae = True
@@ -377,6 +377,7 @@ class ConvolutionalOccupancyNetwork_Hypernet(nn.Module):
         Args:
             input (tensor): the input
         '''
+        # st()
         arg_dict = kwargs['arg_dict']
         hyper_wts,loss = self.hypernet(inputs,arg_dict)
         encoder_wts = hyper_wts[:2]

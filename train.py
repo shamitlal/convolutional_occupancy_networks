@@ -54,6 +54,7 @@ else:
 import socket
 if "compute" in socket.gethostname():
     if cfg['data']['dataloader_type'] == 'pydisco':
+        num_val = 185
         if username == "shamitl":
             cfg['data']['path'] ='/home/shamitl/datasets/shapenet_renders/npys'
         else:
