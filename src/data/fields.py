@@ -275,6 +275,11 @@ class PointsField_Pydisco(Field):
 
         if self.transform is not None:
             data = self.transform(data)
+        
+        if points.shape[0]<100000:
+            num_repeat = 100000//points.shape[0] +   1
+            points = np.tile(np.expand_dims(points, 0), (num_repeat, 1, 1)).reshape(-1, 3)[:100000]
+            occupancies = np.tile(np.expand_dims(occupancies, 0), (num_repeat, 1)).reshape(-1)[:100000]
 
         data['points_all'] = points
         data['occupancies_all'] = occupancies
