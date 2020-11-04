@@ -77,6 +77,11 @@ exp_name = args.config.split("/")[-1][:-5]
 
 cfg['training']['out_dir'] = os.path.join('out/pointcloud',exp_name)
 
+if cfg['training']['load_exp'] != "nothing":
+    load_dir = os.path.join('out/pointcloud',cfg['training']['load_exp'])
+else:
+    load_dir = os.path.join('out/pointcloud',exp_name)
+
 # st()
 # Shorthands
 
@@ -122,6 +127,7 @@ vis_loader = torch.utils.data.DataLoader(
     val_dataset, batch_size=1, shuffle=False,
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
+
 model_counter = defaultdict(int)
 data_vis_list = []
 
@@ -158,7 +164,9 @@ optimizer = optim.Adam(model.parameters(), lr=lr)
 # optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
 trainer = config.get_trainer(model, optimizer, cfg, device=device)
 
-checkpoint_io = CheckpointIO(out_dir, model=model, optimizer=optimizer)
+# st()
+checkpoint_io = CheckpointIO(load_dir, model=model, optimizer=optimizer)
+
 load_dict = dict()
 
 

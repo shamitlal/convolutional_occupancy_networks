@@ -40,12 +40,13 @@ model:
   encoder: resnet18
   decoder_kwargs: {}
   encoder_kwargs: {}
-  hypernet_params: {'vqvae_dict_size':100,'use_rgb':true,'dynamic_dict':false,'vq_loss_coeff':100,'no_decoder_hyper': false}
+  hypernet_params: {'vqvae_dict_size':100,'use_rgb':true,'dynamic_dict':false,'vq_loss_coeff':100,'no_decoder_hyper':false,'do_imagenet':false}
   multi_gpu: false
   c_dim: 512
 training:
   out_dir:  out/default
-  lr: 0.0001
+  load_exp: nothing
+  lr: 0.0005
   no_load: false
   batch_size: 64
   print_every: 200

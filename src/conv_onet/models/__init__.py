@@ -3,11 +3,14 @@ import ipdb
 import pickle
 st = ipdb.set_trace
 import torch.nn as nn
+import socket
+import numpy as np
 import torch.nn.functional as F
 from torch import distributions as dist
 from torch.nn.parameter import Parameter
 from src.conv_onet.models import decoder
 import torchvision.models as models
+from pcl_shapenet.eval_embeddings_imagenet import  Feat_Embedding_Model
 from src.encoder.pointnetpp import PointNetPlusPlusSSG
 from src.encoder.pointnetpp import PointNetPlusPlusMSG
 
@@ -132,15 +135,32 @@ class HyperNet(nn.Module):
         # vqvae_dict_size = 1000
         # st()
         self.vqvae_dict_size = hypernet_params['vqvae_dict_size']
+        self.do_imagenet = hypernet_params['do_imagenet']
 
         # lambda_val = [lambda_val]*10 + [5,5]
+        hostname = socket.gethostname()
+        # st()
         if hypernet_params['use_rgb']:
-            self.encodingnet = ResnetEncoder()
+            if self.do_imagenet:
+                if "compute" in hostname:
+                    pretrained_file = "/home/mprabhud/ishita/other/resnet/18oct_frozen_2048_deepAutoencmodel_best.pth.tar"
+                else:
+                    pretrained_file = ""  
+                self.encodingnet = Feat_Embedding_Model(pretrained_file = pretrained_file)            
+            else:              
+                self.encodingnet = ResnetEncoder()
         else:
             self.encodingnet = PointNetPlusPlusMSG()
 
         self.embedding = nn.Embedding(self.vqvae_dict_size, self.emb_dimension)
-        nn.init.normal_(self.embedding.weight, mean=0, std=0.4)
+        
+        if self.do_imagenet:
+            if "compute" in hostname:
+                loaded_kmeans = torch.from_numpy(np.load("pcl_shapenet/dump/kmeans_imagenet_sdf_allt.npy"))
+                self.embedding.weight.data = loaded_kmeans
+        else:
+            nn.init.normal_(self.embedding.weight, mean=0, std=0.4)
+
         self.prototype_usage = torch.zeros(self.vqvae_dict_size).cuda()
         # st()
 
@@ -241,12 +261,16 @@ class HyperNet(nn.Module):
 
         step_check = 250
         B = input.shape[0]
-        
+        # st()
         if arg_dict['rgb'] is None:
             embed = self.encodingnet(input)
         else:
             rgb = arg_dict['rgb']
-            embed = self.encodingnet(rgb)
+            if self.do_imagenet:
+                embed = self.encodingnet(rgb)
+                embed = nn.functional.normalize(embed, p=2, dim=1)                    
+            else:            
+                embed = self.encodingnet(rgb)
 
         embed_shape = embed.shape            
         
