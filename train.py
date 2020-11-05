@@ -209,19 +209,20 @@ while True:
 
         bbox_ends = batch['inputs.bbox_ends']
 
-        if it % args.log_every == 0:
-            # Visualize stuff
-            if 'inputs.single_view_rgb' in batch:
-                tb_vis.summ_rgb("rgb_camX", logger, batch['inputs.single_view_rgb'], it)
-                tb_vis.summ_box("bbox", logger, batch['inputs.single_view_rgb'], bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), it)
-                tb_vis.summ_sdf_occupancies_single("SDF_sampled", logger, batch['points'].cuda(), batch['points.occ'].cuda(), batch['inputs.single_view_rgb'].cuda(), batch['inputs.pix_T_camX'].cuda(), it)
-                tb_vis.summ_sdf_occupancies_single("SDF_all", logger, batch['points.points_all'].cuda(), batch['points.occupancies_all'].cuda(), batch['inputs.single_view_rgb'].cuda(), batch['inputs.pix_T_camX'].cuda(), it)
+        if cfg['data']['dataloader_type'] == "pydisco":
+            if it % args.log_every == 0:
+                # Visualize stuff
+                if 'inputs.single_view_rgb' in batch:
+                    tb_vis.summ_rgb("rgb_camX", logger, batch['inputs.single_view_rgb'], it)
+                    tb_vis.summ_box("bbox", logger, batch['inputs.single_view_rgb'], bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), it)
+                    tb_vis.summ_sdf_occupancies_single("SDF_sampled", logger, batch['points'].cuda(), batch['points.occ'].cuda(), batch['inputs.single_view_rgb'].cuda(), batch['inputs.pix_T_camX'].cuda(), it)
+                    tb_vis.summ_sdf_occupancies_single("SDF_all", logger, batch['points.points_all'].cuda(), batch['points.occupancies_all'].cuda(), batch['inputs.single_view_rgb'].cuda(), batch['inputs.pix_T_camX'].cuda(), it)
 
-            # tb_vis.summ_depth("Depth_all", logger, batch['inputs.pix_T_camX'].cuda(), batch['inputs.points_all'].cuda(), cfg['data']['height'], cfg['data']['width'], it)
-            tb_vis.summ_depth("Depth_sampled", logger, batch['inputs.pix_T_camX'].cuda(), batch['inputs'].cuda(), cfg['data']['height'], cfg['data']['width'], it)
-            
-            # tb_vis.summ_occ_grid("Occ_all", logger, bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), batch['inputs.points_all'].cuda(), cfg['model']['encoder_kwargs']['grid_resolution'], it)
-            tb_vis.summ_occ_grid("Occ_sampled", logger, bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), batch['inputs'].cuda(), cfg['model']['encoder_kwargs']['grid_resolution'], it)
+                # tb_vis.summ_depth("Depth_all", logger, batch['inputs.pix_T_camX'].cuda(), batch['inputs.points_all'].cuda(), cfg['data']['height'], cfg['data']['width'], it)
+                tb_vis.summ_depth("Depth_sampled", logger, batch['inputs.pix_T_camX'].cuda(), batch['inputs'].cuda(), cfg['data']['height'], cfg['data']['width'], it)
+                
+                # tb_vis.summ_occ_grid("Occ_all", logger, bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), batch['inputs.points_all'].cuda(), cfg['model']['encoder_kwargs']['grid_resolution'], it)
+                tb_vis.summ_occ_grid("Occ_sampled", logger, bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), batch['inputs'].cuda(), cfg['model']['encoder_kwargs']['grid_resolution'], it)
 
         print("Processing iteration: ", it)
         # st()
