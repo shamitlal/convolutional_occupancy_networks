@@ -460,12 +460,14 @@ class PointCloudField(Field):
         normals = pointcloud_dict['normals'].astype(np.float32)
 
         bbox_ends = self.get_bounding_box(torch.tensor(points).unsqueeze(0))
-
+        camXV_T_origin = None
+        pix_T_camX = None
         if self.cfg['data']['warp_to_camera_frame'] or self.cfg['data']['single_view_pcd']:
             camera_path = os.path.join(model_path, 'img_choy2016', 'cameras.npz')
             camera = np.load(camera_path)
             camXV_T_origin = torch.tensor(get_4x4(camera[f'world_mat_{camera_view}'])).unsqueeze(0)
             pix_T_camX = torch.tensor(camera[f'camera_mat_{camera_view}']).unsqueeze(0).float()
+
             points = apply_4x4(camXV_T_origin, torch.tensor(points).unsqueeze(0))
             bbox_ends = self.get_bounding_box(points)
 
@@ -497,7 +499,11 @@ class PointCloudField(Field):
         if self.transform is not None:
             data = self.transform(data)
         
-        data['bbox_ends'] = bbox_ends
+        data['bbox_ends'] =  bbox_ends #torch.tensor([[-0.5,-0.5,-0.5],[0.5,0.5,0.5]])  
+
+        if self.cfg['data']['warp_to_camera_frame']:
+            data['pix_T_camX'] = pix_T_camX.squeeze(0)
+            data['camX_T_origin'] = camXV_T_origin.squeeze(0)
         if self.cfg['data']['single_view_pcd']:
             data['single_view_rgb'] = rgb.numpy()
 

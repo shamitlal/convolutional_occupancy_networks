@@ -21,8 +21,6 @@ st = ipdb.set_trace
 # debug = True
 
 
-
-
 # Arguments
 parser = argparse.ArgumentParser(
     description='Train a 3D reconstruction model.'
@@ -70,8 +68,7 @@ else:
 t0 = time.time()
 import os
 
-
-exp_name = args.config.split("/")[-1][:-5]
+exp_name = args.config.split("/")[-1][:-5] + "_" + args.run_name
 
 # st()
 
@@ -209,7 +206,7 @@ while True:
 
         bbox_ends = batch['inputs.bbox_ends']
 
-        if cfg['data']['dataloader_type'] == "pydisco":
+        if cfg['data']['warp_to_camera_frame'] == True:
             if it % args.log_every == 0:
                 # Visualize stuff
                 if 'inputs.single_view_rgb' in batch:
@@ -224,7 +221,7 @@ while True:
                 # tb_vis.summ_occ_grid("Occ_all", logger, bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), batch['inputs.points_all'].cuda(), cfg['model']['encoder_kwargs']['grid_resolution'], it)
                 tb_vis.summ_occ_grid("Occ_sampled", logger, bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), batch['inputs'].cuda(), cfg['model']['encoder_kwargs']['grid_resolution'], it)
 
-        print("Processing iteration: ", it)
+        # print("Processing iteration: ", it)
         # st()
         from scipy.misc import imsave
         # st()
