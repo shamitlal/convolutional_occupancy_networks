@@ -500,7 +500,9 @@ class PointCloudField(Field):
         if self.transform is not None:
             data = self.transform(data)
         # st()
-        data['bbox_ends'] =  bbox_ends #torch.tensor([[-0.5,-0.5,-0.5],[0.5,0.5,0.5]])  
+        data['bbox_ends'] = bbox_ends
+        if self.cfg['data']['cube_bbox']:
+            data['bbox_ends'] =  make_bbox_cube(bbox_ends) #torch.tensor([[-0.5,-0.5,-0.5],[0.5,0.5,0.5]])  
 
         if self.cfg['data']['warp_to_camera_frame']:
             data['pix_T_camX'] = pix_T_camX.squeeze(0)
