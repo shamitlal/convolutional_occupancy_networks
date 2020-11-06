@@ -130,6 +130,7 @@ class LocalPoolPointnet(nn.Module):
         # acquire the index for each point
         coord = {}
         index = {}
+        # st()
         if 'xz' in self.plane_type:
             coord['xz'] = normalize_coordinate(p.clone(), plane='xz', padding=self.padding)
             index['xz'] = coordinate2index(coord['xz'], self.reso_plane)

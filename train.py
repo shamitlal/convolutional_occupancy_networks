@@ -46,8 +46,10 @@ username = getpass.getuser()
 if args.debug:
     num_val = 5
     args.log_every = 1
+    batch_size = 2
 else:
     num_val = 500
+    batch_size = 10
 # Set t0
 import socket
 if "compute" in socket.gethostname():
@@ -63,7 +65,7 @@ else:
     if cfg['data']['dataloader_type'] == 'pydisco':
         cfg['data']['path'] = "/media/mihir/dataset/shapenet_renders/npys"
     else:
-        cfg['data']['path'] = "data/ShapeNet"
+        cfg['data']['path'] = "data_stored/ShapeNet"
 
 t0 = time.time()
 import os
@@ -83,12 +85,13 @@ else:
 # Shorthands
 
 out_dir = cfg['training']['out_dir']
-batch_size = cfg['training']['batch_size']
+# batch_size = cfg['training']['batch_size']
 backup_every = cfg['training']['backup_every']
 vis_n_outputs = cfg['generation']['vis_n_outputs']
 exit_after = args.exit_after
 
 model_selection_metric = cfg['training']['model_selection_metric']
+
 if cfg['training']['model_selection_mode'] == 'maximize':
     model_selection_sign = 1
 elif cfg['training']['model_selection_mode'] == 'minimize':
@@ -96,7 +99,6 @@ elif cfg['training']['model_selection_mode'] == 'minimize':
 else:
     raise ValueError('model_selection_mode must be '
                      'either maximize or minimize.')
-
 # Output directory
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
@@ -104,13 +106,11 @@ if not os.path.exists(out_dir):
 shutil.copyfile(args.config, os.path.join(out_dir, 'config.yaml'))
 
 
-
 # Dataset
 train_dataset = config.get_dataset('train', cfg)
 val_dataset = config.get_dataset('val', cfg, return_idx=True)
-# st()
 train_loader = torch.utils.data.DataLoader(
-    train_dataset, batch_size=2, num_workers=0, shuffle=True,
+    train_dataset, batch_size=batch_size, num_workers=0, shuffle=True,
     collate_fn=data.collate_remove_none,
     worker_init_fn=data.worker_init_fn)
 
@@ -146,7 +146,7 @@ for i in range(num_val):
         data_vis_list.append({'category': category_name, 'it': c_it, 'data': data_vis})
 
     model_counter[category_id] += 1
-# st()
+
 # Model
 logger = SummaryWriter(os.path.join(out_dir, 'logs', args.run_name))
 
@@ -213,7 +213,7 @@ while True:
                     tb_vis.summ_rgb("rgb_camX", logger, batch['inputs.single_view_rgb'], it)
                     tb_vis.summ_box("bbox", logger, batch['inputs.single_view_rgb'], bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), it)
                     tb_vis.summ_sdf_occupancies_single("SDF_sampled", logger, batch['points'].cuda(), batch['points.occ'].cuda(), batch['inputs.single_view_rgb'].cuda(), batch['inputs.pix_T_camX'].cuda(), it)
-                    tb_vis.summ_sdf_occupancies_single("SDF_all", logger, batch['points.points_all'].cuda(), batch['points.occupancies_all'].cuda(), batch['inputs.single_view_rgb'].cuda(), batch['inputs.pix_T_camX'].cuda(), it)
+                    # tb_vis.summ_sdf_occupancies_single("SDF_all", logger, batch['points.points_all'].cuda(), batch['points.occupancies_all'].cuda(), batch['inputs.single_view_rgb'].cuda(), batch['inputs.pix_T_camX'].cuda(), it)
 
                 # tb_vis.summ_depth("Depth_all", logger, batch['inputs.pix_T_camX'].cuda(), batch['inputs.points_all'].cuda(), cfg['data']['height'], cfg['data']['width'], it)
                 tb_vis.summ_depth("Depth_sampled", logger, batch['inputs.pix_T_camX'].cuda(), batch['inputs'].cuda(), cfg['data']['height'], cfg['data']['width'], it)

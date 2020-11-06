@@ -460,8 +460,10 @@ class PointCloudField(Field):
         normals = pointcloud_dict['normals'].astype(np.float32)
 
         bbox_ends = self.get_bounding_box(torch.tensor(points).unsqueeze(0))
+        # st()
         camXV_T_origin = None
         pix_T_camX = None
+
         if self.cfg['data']['warp_to_camera_frame'] or self.cfg['data']['single_view_pcd']:
             camera_path = os.path.join(model_path, 'img_choy2016', 'cameras.npz')
             camera = np.load(camera_path)
