@@ -137,8 +137,8 @@ class PointsField(Field):
             file_path = os.path.join(model_path, self.file_name, '%s_%02d.npz' % (self.file_name, num))
 
         points_dict = np.load(file_path)
-        # st()
-        points = points_dict['points']
+
+        points = points_dict['points']*points_dict['scale']
         # Break symmetry if given in float16:
         if points.dtype == np.float16:
             points = points.astype(np.float32)
@@ -456,7 +456,7 @@ class PointCloudField(Field):
 
         pointcloud_dict = np.load(file_path)
 
-        points = pointcloud_dict['points'].astype(np.float32)
+        points = pointcloud_dict['points'].astype(np.float32) * pointcloud_dict['scale']
         normals = pointcloud_dict['normals'].astype(np.float32)
 
         bbox_ends = self.get_bounding_box(torch.tensor(points).unsqueeze(0))
