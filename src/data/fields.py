@@ -462,6 +462,7 @@ class PointCloudField(Field):
         bbox_ends = self.get_bounding_box(torch.tensor(points).unsqueeze(0))
         camXV_T_origin = None
         pix_T_camX = None
+        # st()
         if self.cfg['data']['warp_to_camera_frame'] or self.cfg['data']['single_view_pcd']:
             camera_path = os.path.join(model_path, 'img_choy2016', 'cameras.npz')
             camera = np.load(camera_path)
@@ -498,7 +499,7 @@ class PointCloudField(Field):
 
         if self.transform is not None:
             data = self.transform(data)
-        
+        # st()
         data['bbox_ends'] =  bbox_ends #torch.tensor([[-0.5,-0.5,-0.5],[0.5,0.5,0.5]])  
 
         if self.cfg['data']['warp_to_camera_frame']:
@@ -863,3 +864,17 @@ def Pixels2Camera(x,y,z,fx,fy,x0,y0):
     z = torch.reshape(z, [B,-1])
     xyz = torch.stack([x,y,z], dim=2)
     return xyz
+
+def make_bbox_cube(bbox_ends):
+
+    # center = (bbox_ends[1]+bbox_ends[0])/2
+    length = bbox_ends[1]-bbox_ends[0]
+    max_len = length.max()
+    extra_len = max_len - length
+    extra_len_size = extra_len/2.
+
+    bbox_ends_new = bbox_ends.clone()
+
+    bbox_ends_new[0] = bbox_ends_new[0] - extra_len_size
+    bbox_ends_new[1] = bbox_ends_new[1] + extra_len_size
+    return bbox_ends_new
