@@ -1,6 +1,6 @@
 method: conv_onet
 data:
-  cube_bbox: False
+  cube_bbox: True
   input_type: pointcloud
   classes: null
   path: /projects/katefgroup/datasets/ShapeNet
@@ -10,7 +10,7 @@ data:
   points_file: points.npz
   points_iou_file: points.npz
   single_view_pcd: False 
-  warp_to_camera_frame: False
+  warp_to_camera_frame: True
   # points_unpackbits: false
   voxels_file: null
   height: 137

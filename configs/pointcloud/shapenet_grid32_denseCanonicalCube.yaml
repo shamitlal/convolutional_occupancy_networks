@@ -1,6 +1,6 @@
 method: conv_onet
 data:
-  cube_bbox: False
+  cube_bbox: True
   input_type: pointcloud
   classes: null
   path: /projects/katefgroup/datasets/ShapeNet
