@@ -1,5 +1,6 @@
 method: conv_onet
 data:
+  hardcoded_bbox: false
   cube_bbox: false
   dataloader_type: normal
   dataset: Shapes3D

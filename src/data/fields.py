@@ -501,7 +501,9 @@ class PointCloudField(Field):
             data = self.transform(data)
         # st()
         data['bbox_ends'] = bbox_ends
-        if self.cfg['data']['cube_bbox']:
+        if self.cfg['data']['hardcoded_bbox']:
+            data['bbox_ends'] = torch.tensor([[-0.5,-0.5,-0.5],[0.5,0.5,0.5]])
+        elif self.cfg['data']['cube_bbox']:
             data['bbox_ends'] =  make_bbox_cube(bbox_ends) #torch.tensor([[-0.5,-0.5,-0.5],[0.5,0.5,0.5]])  
 
         if self.cfg['data']['warp_to_camera_frame']:
