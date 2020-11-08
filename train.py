@@ -70,7 +70,7 @@ else:
 t0 = time.time()
 import os
 
-exp_name = args.config.split("/")[-1][:-5] + "_" + args.run_name
+exp_name = args.config.split("/")[-1][:-5]
 
 # st()
 
@@ -209,7 +209,7 @@ while True:
         if cfg['data']['warp_to_camera_frame'] == True:
             if it % args.log_every == 0:
                 # Visualize stuff
-                if 'inputs.single_view_rgb' in batch:
+                if 'inputs.single_view_rgb' in batch or True:
                     tb_vis.summ_rgb("rgb_camX", logger, batch['inputs.single_view_rgb'], it)
                     tb_vis.summ_box("bbox", logger, batch['inputs.single_view_rgb'], bbox_ends.cuda(), batch['inputs.pix_T_camX'].cuda(), it)
                     tb_vis.summ_sdf_occupancies_single("SDF_sampled", logger, batch['points'].cuda(), batch['points.occ'].cuda(), batch['inputs.single_view_rgb'].cuda(), batch['inputs.pix_T_camX'].cuda(), it)
