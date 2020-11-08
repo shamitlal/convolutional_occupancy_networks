@@ -141,8 +141,8 @@ class LocalPoolPointnet(nn.Module):
             coord['yz'] = normalize_coordinate(p.clone(), plane='yz', padding=self.padding)
             index['yz'] = coordinate2index(coord['yz'], self.reso_plane)
         if 'grid' in self.plane_type:
-            # coord['grid'] = normalize_3d_coordinate(p.clone(), padding=self.padding)
-            coord['grid'] = normalize_coord_pydisco(p.clone(), bbox_ends[0], plane="grid")
+            coord['grid'] = normalize_3d_coordinate(p.clone(), padding=self.padding)
+            # coord['grid'] = normalize_coord_pydisco(p.clone(), bbox_ends[0], plane="grid")
             index['grid'] = coordinate2index(coord['grid'], self.reso_grid, coord_type='3d')
         # st()
         net = self.fc_pos(p)

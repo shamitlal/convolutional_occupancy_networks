@@ -1,5 +1,7 @@
 method: conv_onet
 data:
+  do_scale: false
+  do_pydisco_normalization: false
   hardcoded_bbox: false
   cube_bbox: false
   dataloader_type: normal

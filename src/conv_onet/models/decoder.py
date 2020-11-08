@@ -59,9 +59,9 @@ class LocalDecoder(nn.Module):
         return c
 
     def sample_grid_feature(self, p, c, bbox_ends):
-        # p_nor = normalize_3d_coordinate(p.clone(), padding=self.padding) # normalize to the range of (0, 1) # torch.Size([1, 2048, 3])
+        p_nor = normalize_3d_coordinate(p.clone(), padding=self.padding) # normalize to the range of (0, 1) # torch.Size([1, 2048, 3])
         # st()
-        p_nor = normalize_coord_pydisco(p.clone(), bbox_ends[0], plane="grid") # normalize to the range of (0, 1)
+        # p_nor = normalize_coord_pydisco(p.clone(), bbox_ends[0], plane="grid") # normalize to the range of (0, 1)
         p_nor = p_nor[:, :, None, None].float()
         vgrid = 2.0 * p_nor - 1.0 # normalize to (-1, 1)
         # acutally trilinear interpolation if mode = 'bilinear'

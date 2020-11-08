@@ -4,7 +4,7 @@ import ipdb
 import cv2
 from itertools import combinations
 import matplotlib
-from src.common import normalize_coord_pydisco, coordinate2index
+from src.common import normalize_coord_pydisco, coordinate2index, normalize_3d_coordinate
 st = ipdb.set_trace
 log_every = 1
 
@@ -66,7 +66,8 @@ def summ_sdf_occupancies_single(name, logger, points_camXs, occs, rgb_camXs, pix
 def summ_occ_grid(name, logger, bbox_ends, pix_T_camX, xyz_camX, res, it):
     # xyz_camX = xyz_camX[0]
     pix_T_camX = pix_T_camX[0]
-    normalized_xyz = normalize_coord_pydisco(xyz_camX, bbox_ends[0], plane="grid")
+    # normalized_xyz = normalize_coord_pydisco(xyz_camX, bbox_ends[0], plane="grid")
+    normalized_xyz = normalize_3d_coordinate(xyz_camX.clone(), padding=0.1)
     memcoord_xyz = coordinate2index(normalized_xyz, res, coord_type='3d')
     grid = torch.zeros(res*res*res).cuda()
     grid[memcoord_xyz[0,0]] = 1
